@@ -1,0 +1,491 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>WORLDPANEL — Painel Econômico Global</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://flagcdn.com">
+  <link rel="preconnect" href="https://images.unsplash.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+  <style>
+    :root{
+      --bg:#080808;--surface:#111111;--surface2:#1a1a1a;--surface3:#222222;
+      --border:#2e2e2e;--border-light:#3a3a3a;
+      --text:#ececec;--muted:#8a8a8a;--dim:#5c5c5c;
+      --accent:#e8e8e8;--accent-hover:#ffffff;
+      --c-green:#3d9a6a;--c-red:#c45c5c;--c-amber:#c9a227;--c-blue:#5b8fd4;--c-purple:#9b7ec8;
+      --radius:6px;--radius-lg:10px;
+    }
+    *{box-sizing:border-box;margin:0;padding:0}
+    body{font-family:'Inter','Segoe UI',system-ui,sans-serif;background:var(--bg);color:var(--text);min-height:100vh;line-height:1.55;-webkit-font-smoothing:antialiased}
+    header{background:var(--surface);border-bottom:1px solid var(--border);padding:1.1rem 1.75rem;display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:1rem}
+    header h1{font-size:1.15rem;font-weight:600;letter-spacing:.12em;text-transform:uppercase;color:var(--text)}
+    header h1 span{color:var(--muted);font-weight:400}
+    .status-bar{display:flex;align-items:center;gap:.75rem;font-size:.78rem;color:var(--muted);flex-wrap:wrap}
+    .status-dot{width:7px;height:7px;border-radius:50%;background:var(--c-green);animation:pulse 2s infinite}
+    .status-dot.offline{background:var(--c-red);animation:none}
+    .status-dot.loading{background:var(--c-amber);animation:pulse 1s infinite}
+    @keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
+    nav{display:flex;flex-wrap:wrap;gap:.15rem;padding:.5rem 1.75rem;background:var(--bg);border-bottom:1px solid var(--border);position:sticky;top:0;z-index:100}
+    nav button{background:transparent;border:none;color:var(--muted);padding:.5rem .85rem;border-radius:var(--radius);cursor:pointer;font-size:.72rem;font-weight:500;letter-spacing:.06em;text-transform:uppercase;transition:all .2s}
+    nav button:hover{color:var(--text);background:var(--surface2)}
+    nav button.active{color:var(--text);background:var(--surface3);box-shadow:inset 0 -2px 0 var(--text)}
+    main{padding:1.5rem 1.75rem;max-width:1480px;margin:0 auto}
+    .tab{display:none}.tab.active{display:block}
+    .grid{display:grid;gap:1.1rem}
+    .grid-2{grid-template-columns:repeat(auto-fit,minmax(300px,1fr))}
+    .grid-3{grid-template-columns:repeat(auto-fit,minmax(260px,1fr))}
+    .grid-4{grid-template-columns:repeat(auto-fit,minmax(220px,1fr))}
+    .card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);padding:1.25rem}
+    .card h3{font-size:.72rem;color:var(--muted);margin-bottom:.85rem;text-transform:uppercase;letter-spacing:.1em;font-weight:600}
+    .kpi{font-size:1.55rem;font-weight:600;color:var(--text);letter-spacing:-.02em}
+    .kpi small{font-size:.7rem;color:var(--muted);display:block;margin-top:.25rem;font-weight:400}
+    .accent-num{color:var(--c-green);font-weight:600}
+    .accent-title{color:var(--c-amber);font-size:1rem;font-weight:600;margin:1.25rem 0 .75rem;letter-spacing:.04em}
+    .muted-text{color:var(--muted);font-size:.85rem}
+    table{width:100%;border-collapse:collapse;font-size:.8rem}
+    th,td{padding:.55rem .7rem;text-align:left;border-bottom:1px solid var(--border);white-space:nowrap}
+    th{color:var(--muted);font-weight:600;font-size:.7rem;text-transform:uppercase;letter-spacing:.05em;position:sticky;top:0;background:var(--surface);z-index:2}
+    tr:hover td{background:var(--surface2)}
+    .table-wrap{overflow:auto;max-height:560px}
+    .chart-box{position:relative;height:300px}
+    select,input,textarea,button.btn{background:var(--surface2);border:1px solid var(--border);color:var(--text);padding:.5rem .75rem;border-radius:var(--radius);font-size:.85rem;font-family:inherit}
+    textarea{resize:vertical;min-height:120px;line-height:1.55}
+    button.btn{cursor:pointer;background:var(--surface3);border-color:var(--border-light);font-weight:500;letter-spacing:.03em}
+    button.btn:hover{background:var(--border-light);border-color:var(--muted)}
+    button.btn.primary{background:var(--text);color:var(--bg);border-color:var(--text)}
+    button.btn.primary:hover{background:var(--accent-hover)}
+    button.btn.secondary{background:transparent}
+    button.btn-sm{padding:.3rem .55rem;font-size:.72rem}
+    .form-row{display:flex;flex-wrap:wrap;gap:.65rem;align-items:center;margin-bottom:.85rem}
+    .form-row label{font-size:.78rem;color:var(--muted);text-transform:uppercase;letter-spacing:.04em}
+    .cat-tabs{display:flex;flex-wrap:wrap;gap:.3rem;margin-bottom:1rem}
+    .cat-tabs button{font-size:.72rem;padding:.35rem .65rem}
+    .formula-card h4{color:var(--text);margin-bottom:.5rem;font-size:.92rem;font-weight:600}
+    .formula-help{font-size:.8rem;color:var(--muted);margin:.35rem 0 .6rem;line-height:1.6}
+    .formula-help strong{color:var(--text);font-weight:500}
+    .formula-explain{background:var(--bg);border:1px solid var(--border);border-radius:var(--radius);padding:.85rem 1rem;margin:.5rem 0 .75rem}
+    .formula-eq{font-family:'JetBrains Mono',Consolas,monospace;font-size:.78rem;padding:.35rem 0 .15rem;margin:0;color:var(--c-amber);line-height:1.75;word-break:break-word}
+    .formula-vars{display:flex;flex-wrap:wrap;gap:.4rem;margin-top:.55rem;align-items:center}
+    .formula-vars-label{font-size:.68rem;color:var(--dim);width:100%;text-transform:uppercase;letter-spacing:.05em}
+    .var-chip{position:relative;display:inline-flex;align-items:center;padding:.2rem .5rem;background:var(--surface2);border:1px solid var(--border);border-radius:20px;font-size:.76rem;color:var(--c-amber);cursor:help;font-family:Consolas,monospace;transition:all .15s;user-select:none}
+    .var-chip:hover,.var-chip:focus,.var-chip.active{border-color:var(--muted);background:var(--surface3);outline:none}
+    .var-chip .var-tip{display:none;position:absolute;bottom:calc(100% + 10px);left:50%;transform:translateX(-50%);width:min(240px,70vw);padding:.55rem .7rem;background:var(--surface3);border:1px solid var(--border-light);border-radius:var(--radius);font-family:inherit;font-size:.74rem;color:var(--text);z-index:200;box-shadow:0 12px 32px rgba(0,0,0,.5);line-height:1.5;text-align:left;pointer-events:none}
+    .var-chip .var-tip strong{color:var(--c-green);font-weight:600;display:block;margin-bottom:.2rem;font-size:.74rem}
+    .var-chip:hover .var-tip,.var-chip.active .var-tip,.var-chip:focus .var-tip{display:block}
+    .formula-paper{font-size:.72rem;margin-top:.65rem;padding-top:.55rem;border-top:1px dashed var(--border);line-height:1.65;color:var(--muted)}
+    .formula-paper a{color:var(--c-blue);text-decoration:none}
+    .formula-paper a:hover{text-decoration:underline}
+    .formula-use{font-size:.76rem;color:var(--muted);margin-top:.35rem}
+    .formula-result{background:var(--surface2);border-left:2px solid var(--c-green);padding:.75rem .9rem;margin-top:.65rem;border-radius:0 var(--radius) var(--radius) 0;font-size:.85rem;line-height:1.55}
+    .formula-section{grid-column:1/-1}
+    .formula-section h3{color:var(--dim);font-size:.72rem;margin-bottom:.75rem;text-transform:uppercase;letter-spacing:.12em}
+    .profile-box{background:var(--surface);border:1px solid var(--border);border-left:3px solid var(--c-amber);padding:1.25rem;border-radius:var(--radius-lg);margin-bottom:1.25rem}
+    .profile-box h3{color:var(--text);margin-bottom:.5rem;font-size:.95rem;font-weight:600}
+    .compare-grid{display:grid;grid-template-columns:1fr 1fr;gap:1.25rem}
+    @media(max-width:768px){.compare-grid{grid-template-columns:1fr}}
+    .conclusion-block{margin-bottom:1rem;padding:1rem;background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius-lg)}
+    .conclusion-block h4{color:var(--c-amber);margin-bottom:.45rem;font-size:.88rem;font-weight:600}
+    .tag{display:inline-block;padding:.15rem .5rem;border-radius:3px;font-size:.7rem;margin:.1rem;border:1px solid var(--border)}
+    .tag.up{border-color:var(--c-green);color:var(--c-green)}.tag.down{border-color:var(--c-red);color:var(--c-red)}.tag.neutral{border-color:var(--c-blue);color:var(--c-blue)}
+    .config-list{display:grid;grid-template-columns:repeat(auto-fill,minmax(155px,1fr));gap:.4rem}
+    .config-list label{display:flex;align-items:center;gap:.35rem;font-size:.78rem;cursor:pointer;color:var(--muted)}
+    .score-bar{height:6px;background:var(--border);border-radius:3px;margin-top:.35rem;overflow:hidden}
+    .score-bar div{height:100%;border-radius:3px;background:var(--c-green)}
+    .region-label{font-size:.68rem;color:var(--dim);text-transform:uppercase;letter-spacing:.1em;margin:.5rem 0 .25rem}
+    .hist-info{font-size:.78rem;color:var(--muted);margin-bottom:.5rem}
+    .reloc-card{border-left:2px solid var(--c-amber)}
+    footer{text-align:center;padding:1.25rem;color:var(--dim);font-size:.72rem;border-top:1px solid var(--border);margin-top:2rem;letter-spacing:.04em}
+    .progress-wrap{background:var(--surface2);border-radius:3px;height:6px;overflow:hidden}
+    .progress-wrap div{height:100%;transition:width .3s}
+    .progress-label{display:flex;justify-content:space-between;font-size:.78rem;margin-bottom:.25rem}
+    .card.chart-card{background:var(--surface);border-color:var(--border)}
+    select{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='10' fill='%238a8a8a'%3E%3Cpath d='M2 4l3 3 3-3'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right .65rem center;padding-right:1.75rem;cursor:pointer}
+    select:hover,select:focus,textarea:focus,input:focus{border-color:var(--muted);outline:none}
+    *{scrollbar-width:thin;scrollbar-color:#3a3a3a #111}
+    ::-webkit-scrollbar{width:8px;height:8px}
+    ::-webkit-scrollbar-track{background:var(--bg)}
+    ::-webkit-scrollbar-thumb{background:#333;border-radius:4px}
+    ::-webkit-scrollbar-thumb:hover{background:#444}
+    .diff-badge{display:inline-block;padding:.2rem .55rem;border-radius:3px;font-size:.72rem;font-weight:600;letter-spacing:.03em}
+    .diff-easy{border:1px solid var(--c-green);color:var(--c-green)}
+    .diff-mod{border:1px solid var(--c-blue);color:var(--c-blue)}
+    .diff-hard{border:1px solid var(--c-amber);color:var(--c-amber)}
+    .diff-extreme{border:1px solid var(--c-red);color:var(--c-red)}
+    .guide-header{display:flex;flex-wrap:wrap;align-items:center;gap:.75rem;margin-bottom:.75rem}
+    .guide-header h2{font-size:1.1rem;font-weight:600}
+    .guide-meta{font-size:.78rem;color:var(--muted)}
+    .guide-intro{color:var(--muted);font-size:.88rem;margin-bottom:1rem}
+    .guide-list{list-style:none;font-size:.85rem}
+    .guide-list li{padding:.35rem 0;border-bottom:1px solid var(--border);color:var(--muted)}
+    .guide-list li:last-child{border:none}
+    .step-phase{margin:1rem 0;padding:1rem;background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius-lg)}
+    .step-phase h4{font-size:.78rem;text-transform:uppercase;letter-spacing:.08em;color:var(--text);margin-bottom:.65rem;font-weight:600}
+    .step-list{list-style:none}
+    .step-check{display:flex;align-items:flex-start;gap:.5rem;cursor:pointer;padding:.35rem 0;font-size:.85rem;color:var(--muted)}
+    .step-check input{margin-top:.2rem;accent-color:var(--c-green)}
+    .step-check:hover span{color:var(--text)}
+    .italy-plan{margin-top:1.5rem;padding-top:1.5rem;border-top:1px solid var(--border)}
+    .italy-plan h4{font-size:.78rem;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);margin:1rem 0 .5rem}
+    .link-row{display:flex;flex-wrap:wrap;gap:.4rem;margin-top:.5rem}
+    .link-chip{padding:.35rem .65rem;background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius);font-size:.75rem;color:var(--c-blue);text-decoration:none}
+    .link-chip:hover{border-color:var(--c-blue)}
+    .task-phase{margin-bottom:1.25rem}
+    .task-phase h4{font-size:.72rem;text-transform:uppercase;letter-spacing:.1em;margin-bottom:.5rem;font-weight:600}
+    .task-row{display:flex;align-items:center;gap:.6rem;padding:.5rem .65rem;background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius);margin-bottom:.35rem}
+    .task-row.done{opacity:.5}
+    .task-row.done .task-text{text-decoration:line-through}
+    .task-text{flex:1;font-size:.85rem;color:var(--text)}
+    .task-del{background:none;border:none;color:var(--dim);cursor:pointer;font-size:1.1rem;padding:0 .25rem}
+    .task-del:hover{color:var(--c-red)}
+    .planner-notes{width:100%;min-height:160px;background:var(--bg);border:1px solid var(--border);color:var(--text);padding:1rem;border-radius:var(--radius-lg);font-size:.88rem}
+    .flag-img{display:inline-block;border-radius:3px;object-fit:cover;box-shadow:0 1px 6px rgba(0,0,0,.45);transition:transform .28s ease,box-shadow .28s ease;flex-shrink:0;vertical-align:middle;background:var(--surface3)}
+    .flag-emoji{display:inline-flex;align-items:center;justify-content:center;font-size:1.1em;line-height:1;flex-shrink:0;min-width:24px}
+    .country-cell{display:inline-flex;align-items:center;gap:.5rem}
+    .country-cell strong,.country-cell span{line-height:1.2}
+    tr:hover .flag-img,.country-cell:hover .flag-img,.tag-flag:hover .flag-img,.card:hover .hero-flag{transform:scale(1.1) translateY(-1px);box-shadow:0 4px 14px rgba(0,0,0,.55)}
+    .tag-flag{display:inline-flex;align-items:center;gap:.35rem;padding:.2rem .55rem .2rem .35rem}
+    .country-hero{position:relative;height:168px;border-radius:var(--radius-lg);overflow:hidden;margin-bottom:1.25rem;border:1px solid var(--border)}
+    .hero-bg{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;filter:brightness(.5) saturate(.9);animation:heroDrift 18s ease-in-out infinite alternate}
+    .hero-fallback{background:linear-gradient(135deg,#1a1a1a 0%,#0d0d0d 50%,#1f1f1f 100%)}
+    @keyframes heroDrift{from{transform:scale(1)}to{transform:scale(1.07)}}
+    .hero-overlay{position:absolute;inset:0;background:linear-gradient(105deg,rgba(8,8,8,.88) 0%,rgba(8,8,8,.35) 55%,rgba(8,8,8,.15) 100%);display:flex;align-items:flex-end;padding:1.25rem 1.5rem;gap:1rem}
+    .hero-flag{border-radius:5px;box-shadow:0 6px 24px rgba(0,0,0,.6);transition:transform .3s ease}
+    .hero-text h2{font-size:1.35rem;font-weight:600;letter-spacing:-.02em;margin:0}
+    .hero-sub{font-size:.82rem;color:var(--muted);margin-top:.25rem}
+    .anim-in{animation:fadeUp .45s ease both}
+    @keyframes fadeUp{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
+    .stagger-children>*{animation:fadeUp .4s ease both}
+    .stagger-children>*:nth-child(1){animation-delay:.04s}
+    .stagger-children>*:nth-child(2){animation-delay:.08s}
+    .stagger-children>*:nth-child(3){animation-delay:.12s}
+    .stagger-children>*:nth-child(4){animation-delay:.16s}
+    .stagger-children>*:nth-child(5){animation-delay:.2s}
+    .stagger-children>*:nth-child(6){animation-delay:.24s}
+    .guide-card{display:flex;align-items:center;gap:.85rem;padding:.85rem 1rem;background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius-lg);transition:border-color .25s,transform .25s}
+    .guide-card:hover{border-color:var(--border-light);transform:translateX(4px)}
+    .guide-card .guide-thumb{width:56px;height:42px;border-radius:5px;object-fit:cover;flex-shrink:0;opacity:.85}
+    .city-cell{display:flex;align-items:center;gap:.6rem}
+    .city-thumb{width:44px;height:33px;border-radius:4px;object-fit:cover;flex-shrink:0;opacity:.88;transition:opacity .2s,transform .2s}
+    tr:hover .city-thumb{opacity:1;transform:scale(1.05)}
+    .card.flag-card{transition:transform .22s ease,border-color .22s ease}
+    .card.flag-card:hover{transform:translateY(-3px);border-color:var(--border-light)}
+    .flag-strip{display:flex;gap:.35rem;flex-wrap:wrap;padding:.5rem 0 .25rem;opacity:.7}
+    .flag-strip .flag-img{opacity:.85;transition:opacity .2s,transform .2s}
+    .flag-strip .flag-img:hover{opacity:1;transform:scale(1.15)}
+    .compare-header{display:flex;align-items:center;gap:.65rem;margin-bottom:.75rem}
+    .compare-header h3{margin:0;font-size:1rem;font-weight:600}
+    .hist-picker{margin-top:.5rem}
+    .hist-cat{margin-bottom:.75rem}
+    .hist-cat-label{font-size:.68rem;text-transform:uppercase;letter-spacing:.1em;color:var(--dim);display:block;margin-bottom:.35rem}
+    .hist-chips{display:flex;flex-wrap:wrap;gap:.35rem}
+    .hist-chip{display:inline-flex;align-items:center;padding:.3rem .6rem;background:var(--surface2);border:1px solid var(--border);border-radius:20px;font-size:.74rem;color:var(--muted);cursor:pointer;transition:all .2s;user-select:none}
+    .hist-chip input{display:none}
+    .hist-chip.on{border-color:var(--c-blue);color:var(--text);background:rgba(91,143,212,.12)}
+    .hist-chip:hover{border-color:var(--border-light)}
+    .hist-kpi-grid{display:grid;gap:.5rem;margin-top:.75rem}
+    .hist-kpi-item{padding:.55rem .75rem;background:var(--surface2);border-radius:var(--radius)}
+    .hist-kpi-label{display:block;font-size:.68rem;color:var(--muted);text-transform:uppercase;letter-spacing:.05em}
+    .hist-kpi-val{font-size:1.1rem;font-weight:600;display:block;margin:.15rem 0}
+    .hist-kpi-sub{font-size:.72rem;color:var(--dim)}
+    .corr-table{font-size:.78rem}
+    .corr-table th{font-size:.68rem}
+    .corr-diag{color:var(--dim)}
+    .corr-strong{color:var(--c-green);font-weight:600}
+    .corr-mid{color:var(--c-blue)}
+    .corr-weak{color:var(--muted)}
+    .corr-mirror{color:var(--dim)}
+    .leader-timeline{display:flex;flex-direction:column;gap:.75rem}
+    .leader-card{padding:1rem;background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius-lg);border-left:3px solid var(--c-amber)}
+    .leader-head{margin-bottom:.65rem}
+    .leader-term{font-size:.68rem;color:var(--c-amber);text-transform:uppercase;letter-spacing:.08em;display:block;margin-bottom:.2rem}
+    .leader-role{font-size:.72rem;color:var(--muted);font-weight:400}
+    .leader-body{display:grid;grid-template-columns:1fr 1fr;gap:1rem}
+    @media(max-width:700px){.leader-body{grid-template-columns:1fr}}
+    .leader-label{font-size:.68rem;text-transform:uppercase;letter-spacing:.06em;color:var(--dim);display:block;margin-bottom:.35rem}
+    .leader-col ul{list-style:none;font-size:.8rem;color:var(--muted)}
+    .leader-col li{padding:.2rem 0;border-bottom:1px solid var(--border)}
+    .leader-col li:last-child{border:none}
+    .collapsible .collapse-body{overflow:hidden;max-height:2000px;transition:max-height .35s ease,opacity .3s;opacity:1}
+    .collapsible.collapsed .collapse-body{max-height:0;opacity:0}
+    .collapsible.collapsed .collapse-icon{transform:rotate(-90deg)}
+    .collapse-toggle{width:100%;display:flex;align-items:center;gap:.5rem;background:transparent;border:none;color:var(--text);padding:.5rem 0;cursor:pointer;font-size:.78rem;text-transform:uppercase;letter-spacing:.08em;text-align:left}
+    .collapse-toggle:hover{color:var(--c-amber)}
+    .collapse-icon{display:inline-block;transition:transform .25s;font-size:.7rem;color:var(--muted)}
+    .collapse-hint{font-size:.68rem;color:var(--dim);font-weight:400;text-transform:none;letter-spacing:0}
+    .country-hero-compact{height:72px}
+    .country-hero-compact .hero-overlay{padding:.65rem 1rem}
+    .country-hero-compact .hero-text h2{font-size:1rem}
+    .country-hero-compact .hero-flag{width:40px!important;height:30px!important}
+    .guide-thumb{width:28px;height:21px;border-radius:3px;object-fit:cover;flex-shrink:0}
+    .country-search{background:var(--surface2);border:1px solid var(--border);color:var(--text);padding:.45rem .7rem;border-radius:var(--radius);font-size:.85rem}
+    .leader-head-row{display:flex;align-items:center;gap:.85rem;margin-bottom:.65rem}
+    .leader-photo{width:64px;height:64px;border-radius:6px;object-fit:cover;border:1px solid var(--border);flex-shrink:0;background:var(--surface3)}
+    .leader-decrees{margin-top:.75rem;padding-top:.65rem;border-top:1px dashed var(--border)}
+    .leader-ministries{margin-top:.75rem;padding-top:.65rem;border-top:1px dashed var(--border)}
+    .ministry-block{margin-top:.55rem;padding:.55rem .65rem;background:var(--surface3);border-radius:var(--radius);border:1px solid var(--border)}
+    .ministry-head{display:flex;flex-wrap:wrap;align-items:baseline;gap:.35rem .6rem;margin-bottom:.35rem}
+    .ministry-head strong{font-size:.82rem;color:var(--c-amber)}
+    .ministry-names{font-size:.72rem;color:var(--muted)}
+    .ministry-block ul{list-style:none;font-size:.78rem;color:var(--muted);margin:0;padding:0}
+    .ministry-block li{padding:.18rem 0;border-bottom:1px solid var(--border)}
+    .ministry-block li:last-child{border:none}
+    .leader-photo-pending{opacity:.45}
+    .leader-photo:not(.leader-photo-pending){opacity:1}
+  </style>
+</head>
+<body>
+<header>
+  <h1><span>World</span>Panel</h1>
+  <div class="status-bar">
+    <div class="status-dot loading" id="statusDot"></div>
+    <span id="statusText">Iniciando...</span>
+    <span id="lastUpdate"></span>
+    <span id="histRange"></span>
+  </div>
+</header>
+
+<nav>
+  <button class="active" data-tab="overview">Visão Geral</button>
+  <button data-tab="indicators">Histórico</button>
+  <button data-tab="quality">Qualidade</button>
+  <button data-tab="relocation">Mudança</button>
+  <button data-tab="guides">Guias País</button>
+  <button data-tab="planner">Planejamento</button>
+  <button data-tab="compare">Comparar</button>
+  <button data-tab="formulas">Fórmulas</button>
+  <button data-tab="conclusions">Análise</button>
+  <button data-tab="config">Config</button>
+</nav>
+
+<main>
+  <section id="tab-overview" class="tab active">
+    <div id="flagStrip" class="flag-strip"></div>
+    <div class="grid grid-4" style="margin-bottom:1.25rem" id="kpiCards"></div>
+    <div class="cat-tabs" id="tableCatTabs"></div>
+    <div class="card" style="margin-bottom:1.25rem">
+      <h3 id="tableTitle">Tabela — Indicadores Macro</h3>
+      <div class="table-wrap" id="mainTable"></div>
+    </div>
+    <div class="grid grid-2">
+      <div class="card chart-card"><h3>PIB per Capita PPP</h3><div class="chart-box"><canvas id="chartGdp"></canvas></div></div>
+      <div class="card chart-card"><h3>IDH — Desenvolvimento Humano</h3><div class="chart-box"><canvas id="chartHdi"></canvas></div></div>
+      <div class="card chart-card"><h3>Índice de Felicidade</h3><div class="chart-box"><canvas id="chartHappy"></canvas></div></div>
+      <div class="card chart-card"><h3>Expectativa de Vida</h3><div class="chart-box"><canvas id="chartLife"></canvas></div></div>
+    </div>
+  </section>
+
+  <section id="tab-indicators" class="tab">
+    <div class="card collapsible collapsed" id="histPickerCollapse" style="margin-bottom:1.25rem">
+      <button type="button" class="collapse-toggle" onclick="toggleCollapse('histPickerCollapse')">
+        <span class="collapse-icon">▾</span> Filtros — país e indicadores (até 8)
+      </button>
+      <div class="collapse-body">
+        <div class="form-row" style="margin-top:.75rem">
+          <label>País</label>
+          <input type="text" id="indSearch" class="country-search" placeholder="Buscar país..." style="min-width:180px">
+          <select id="indCountry" onchange="renderHistoryPanel()" style="min-width:140px"></select>
+          <label>Modo</label>
+          <select id="histChartMode" onchange="renderHistoryPanel()">
+            <option value="multi">Múltiplas séries</option>
+            <option value="normalized">Índice base 100</option>
+            <option value="correlation">Correlação (dispersão)</option>
+          </select>
+          <button class="btn primary" onclick="renderHistoryPanel()">Atualizar</button>
+        </div>
+        <p class="muted-text" id="histIndCount">Selecione até 8 indicadores</p>
+        <div id="histIndPicker" class="hist-picker"></div>
+      </div>
+    </div>
+    <div class="hist-info" id="histInfo"></div>
+    <div class="grid grid-2">
+      <div class="card" id="indDetail"></div>
+      <div class="card chart-card">
+        <h3 id="histChartTitle">Histórico — série temporal</h3>
+        <div class="chart-box" style="height:380px"><canvas id="chartHistory"></canvas></div>
+        <div id="histLegend" style="margin-top:.5rem"></div>
+      </div>
+    </div>
+    <div class="grid grid-2" style="margin-top:1.25rem">
+      <div class="card" id="histCorrelation"></div>
+      <div class="card" id="histChanges"></div>
+    </div>
+    <div class="card" style="margin-top:1.25rem">
+      <h3>Governantes — mandatos, medidas e consequências</h3>
+      <div id="histLeaders"></div>
+    </div>
+  </section>
+
+  <section id="tab-quality" class="tab">
+    <div class="card" style="margin-bottom:1.25rem">
+      <h3>Índices de Qualidade de Vida — IDH, Felicidade, Gini, Saúde, Educação</h3>
+      <div class="table-wrap" id="qualityTable"></div>
+    </div>
+    <div class="grid grid-2">
+      <div class="card"><h3>Ranking IDH (PNUD)</h3><div class="chart-box"><canvas id="chartQHdi"></canvas></div></div>
+      <div class="card"><h3>Ranking Felicidade (ONU 2024)</h3><div class="chart-box"><canvas id="chartQHappy"></canvas></div></div>
+      <div class="card"><h3>Gini — Desigualdade (menor = melhor)</h3><div class="chart-box"><canvas id="chartQGini"></canvas></div></div>
+      <div class="card"><h3>Gasto em Saúde (% PIB)</h3><div class="chart-box"><canvas id="chartQHealth"></canvas></div></div>
+    </div>
+  </section>
+
+  <section id="tab-relocation" class="tab">
+    <div class="profile-box">
+      <h3>Simulador — Casal 30 anos · Ensino Superior · Cidadania UE · Formar família</h3>
+      <p class="muted-text" style="margin-bottom:.75rem">Ranking europeu: idioma, emprego inicial, custo de vida, saúde e qualidade para família.</p>
+      <button class="btn primary" onclick="renderFamilyProfile()">Analisar melhor país na Europa</button>
+      <div class="form-row" style="margin-top:.75rem">
+        <input type="text" id="familySearch" class="country-search" placeholder="Buscar país europeu..." style="min-width:220px">
+        <button class="btn secondary" onclick="focusFamilyCountry()">Ver país</button>
+      </div>
+      <div id="familyCountryFocus"></div>
+      <div id="familyProfileResult" style="margin-top:1rem"></div>
+    </div>
+    <div class="form-row">
+      <label>Seu salário atual (USD/mês)</label><input type="number" id="relocSalary" value="2500" style="width:120px">
+      <label>Setor de interesse</label>
+      <select id="relocSector">
+        <option value="sector_tech">Tecnologia / TI</option>
+        <option value="sector_health">Saúde</option>
+        <option value="sector_finance">Finanças</option>
+        <option value="sector_construction">Construção / Engenharia</option>
+        <option value="sector_hospitality">Turismo / Hospitalidade</option>
+      </select>
+      <button class="btn" onclick="renderRelocation()">Calcular Destinos</button>
+    </div>
+    <div class="grid grid-4" style="margin-bottom:1.25rem" id="relocKpis"></div>
+    <div class="card" style="margin-bottom:1.25rem">
+      <h3>Ranking para Morar — Salário, Custo de Vida, Demanda Setorial, Segurança</h3>
+      <div class="table-wrap" id="relocTable"></div>
+    </div>
+    <div class="grid grid-2">
+      <div class="card reloc-card"><h3>Top 10 Destinos para Expatriar</h3><div class="chart-box"><canvas id="chartReloc"></canvas></div></div>
+      <div class="card" id="relocDetail"></div>
+    </div>
+  </section>
+
+  <section id="tab-guides" class="tab">
+    <div class="card" style="margin-bottom:1.25rem">
+      <h3>Índice de dificuldade — Morar na Europa</h3>
+      <p class="muted-text" style="margin-bottom:1rem">Quanto menor o índice, mais fácil começar do zero. Considera burocracia, idioma, custo de vida e mercado de trabalho.</p>
+      <div id="guidesOverview"></div>
+    </div>
+    <div class="form-row">
+      <label>Guia detalhado</label>
+      <input type="text" id="guideSearch" class="country-search" placeholder="Buscar país..." style="min-width:200px">
+      <select id="guideCountry" onchange="renderCountryGuide(this.value)"></select>
+      <button class="btn primary" onclick="renderCountryGuide(document.getElementById('guideCountry').value)">Carregar</button>
+    </div>
+    <div id="guideDetail"></div>
+  </section>
+
+  <section id="tab-planner" class="tab">
+    <div id="plannerHero"></div>
+    <div class="grid grid-2">
+      <div class="card">
+        <h3>Meta da transição</h3>
+        <div class="form-row"><label>Destino</label><select id="plannerTarget" onchange="saveMeta()"></select></div>
+        <div class="form-row"><label>Orçamento reserva</label><input id="plannerBudget" placeholder="Ex: €15.000" onchange="saveMeta()" style="width:140px"></div>
+        <div class="form-row"><label>Data meta</label><input type="date" id="plannerDeadline" onchange="saveMeta()" style="width:160px"></div>
+        <div id="plannerProgress" style="margin-top:1rem"></div>
+      </div>
+      <div class="card">
+        <h3>Anotações livres</h3>
+        <textarea id="plannerNotes" class="planner-notes" placeholder="Ideias, contatos, lembretes, links de apartamentos..." oninput="saveNotes()"></textarea>
+        <button class="btn secondary" style="margin-top:.5rem" onclick="exportPlanner()">Exportar planejamento .txt</button>
+      </div>
+    </div>
+    <div class="card" style="margin-top:1.25rem">
+      <h3>Tarefas da transição</h3>
+      <div class="form-row">
+        <input id="newTaskText" placeholder="Nova tarefa..." style="flex:1;min-width:200px">
+        <select id="newTaskPhase">
+          <option value="prep">Preparação</option>
+          <option value="income">Renda</option>
+          <option value="housing">Moradia</option>
+          <option value="lang">Idioma</option>
+          <option value="arrival">Chegada</option>
+        </select>
+        <button class="btn primary" onclick="addTask()">Adicionar</button>
+      </div>
+      <div id="plannerTasks" style="margin-top:1rem"></div>
+    </div>
+  </section>
+
+  <section id="tab-compare" class="tab">
+    <div class="card" style="margin-bottom:1.25rem">
+      <div class="form-row">
+        <label>Indicador</label>
+        <select id="cmpIndicator" onchange="renderCompare()"></select>
+        <button class="btn primary" onclick="renderCompare()">Comparar países</button>
+      </div>
+      <p class="muted-text">Selecione até 6 países — mesmo indicador, gráfico unificado</p>
+      <div id="cmpCountryPicker"></div>
+    </div>
+    <div class="card chart-card" style="margin-bottom:1.25rem">
+      <h3 id="cmpChartTitle">Comparativo histórico</h3>
+      <div class="chart-box" style="height:400px"><canvas id="chartCompare"></canvas></div>
+    </div>
+    <div class="card" id="cmpTable"></div>
+    <div class="grid grid-4" id="cmpSnapshot" style="margin-top:1.25rem"></div>
+  </section>
+
+  <section id="tab-formulas" class="tab">
+    <div class="card" style="margin-bottom:1.25rem">
+      <h3>Como usar as fórmulas</h3>
+      <p style="font-size:.88rem;color:var(--muted)">Cada calculadora explica <strong style="color:var(--text)">para que serve</strong>, mostra a <strong style="color:var(--text)">fórmula com variáveis clicáveis</strong> (passe o mouse ou toque) e inclui o <strong style="color:var(--text)">PDF de referência</strong> dentro do quadro de explicação.</p>
+    </div>
+    <div class="grid grid-2" id="formulasGrid"></div>
+  </section>
+
+  <section id="tab-conclusions" class="tab">
+    <div class="form-row">
+      <button class="btn" onclick="generateConclusions()">Gerar Análise</button>
+      <button class="btn secondary" onclick="exportReport()">Exportar .txt</button>
+    </div>
+    <div id="conclusionsContent"></div>
+  </section>
+
+  <section id="tab-config" class="tab">
+    <div class="card" style="margin-bottom:1.25rem">
+      <h3>Atualização via API Gratuita (World Bank)</h3>
+      <div class="form-row">
+        <label>Refresh (seg)</label><input type="number" id="refreshInterval" value="120" min="30" max="900" style="width:80px">
+        <button class="btn" onclick="applyConfig()">Aplicar</button>
+        <button class="btn secondary" onclick="loadLiveData(true)">Atualizar agora</button>
+      </div>
+      <p style="font-size:.8rem;color:var(--muted)">Histórico: 1960–2025 · Cache local incremental (localStorage) · só busca o que falta</p>
+      <div id="dbStats" style="margin-top:.75rem"></div>
+      <div class="progress-wrap"><div id="loadProgress" style="width:0%"></div></div>
+      <div class="form-row" style="margin-top:.75rem">
+        <button class="btn secondary" onclick="clearLocalDB()">Limpar cache</button>
+      </div>
+    </div>
+    <div class="card">
+      <h3>Países Ativos (<span id="countryCount"></span>)</h3>
+      <div id="countryToggles"></div>
+      <div class="form-row" style="margin-top:1rem">
+        <button class="btn secondary" onclick="toggleRegion('europe',true)">+ Europa</button>
+        <button class="btn secondary" onclick="toggleRegion('americas',true)">+ Américas</button>
+        <button class="btn secondary" onclick="toggleAllCountries(true)">Todos</button>
+        <button class="btn secondary" onclick="toggleAllCountries(false)">Nenhum</button>
+      </div>
+    </div>
+  </section>
+</main>
+
+<footer>World Bank Open Data API (gratuita) · PNUD (IDH) · World Happiness Report · Dados compilados 2023/2024</footer>
+
+<script src="world-data.js"></script>
+<script src="world-db.js"></script>
+<script src="world-formulas.js"></script>
+<script src="world-guides.js"></script>
+<script src="world-planner.js"></script>
+<script src="world-leaders.js"></script>
+<script src="world-app.js"></script>
+<script src="world-history.js"></script>
+<script src="world-compare.js"></script>
+</body>
+</html>

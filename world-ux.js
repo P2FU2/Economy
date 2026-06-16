@@ -408,6 +408,7 @@ function initUX() {
   if (st) st.setAttribute('aria-live', 'polite');
   if (typeof initUXExtended === 'function') initUXExtended();
   if (typeof initTour === 'function') initTour();
+  if (typeof initExpatModule === 'function') initExpatModule();
 }
 
 function exportChartPng(canvasId, filename) {

@@ -331,6 +331,35 @@
     .tour-nav-right{display:flex;gap:.4rem}
     .tour-actions{margin-bottom:.65rem}
     body.tour-active{overflow:hidden}
+    .expat-modal{position:fixed;inset:0;z-index:600;display:none;align-items:flex-start;justify-content:center;padding:1rem;overflow-y:auto}
+    .expat-modal.open{display:flex}
+    body.expat-modal-open{overflow:hidden}
+    .expat-modal-backdrop{position:fixed;inset:0;background:rgba(0,0,0,.65)}
+    .expat-modal-panel{position:relative;z-index:1;width:min(920px,100%);max-height:92vh;overflow-y:auto;background:var(--surface);border:1px solid var(--border-light);border-radius:var(--radius-lg);padding:1.5rem 1.75rem;margin:2rem auto;box-shadow:0 24px 64px rgba(0,0,0,.55)}
+    .expat-modal-close{position:absolute;top:.65rem;right:.75rem;background:none;border:none;color:var(--dim);font-size:1.5rem;cursor:pointer;z-index:2}
+    .expat-modal-close:hover{color:var(--text)}
+    .expat-eyebrow{font-size:.68rem;text-transform:uppercase;letter-spacing:.1em;color:var(--c-amber);margin-bottom:.25rem}
+    .expat-wizard-head{display:flex;align-items:flex-start;gap:1rem;margin-bottom:1rem}
+    .expat-progress{height:4px;background:var(--surface2);border-radius:2px;margin-bottom:1.25rem;overflow:hidden}
+    .expat-progress div{height:100%;background:linear-gradient(90deg,var(--c-amber),var(--c-green));transition:width .3s}
+    .expat-fields label{display:block;font-size:.72rem;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);margin:1rem 0 .4rem}
+    .expat-fields label:first-child{margin-top:0}
+    .expat-chips{display:flex;flex-wrap:wrap;gap:.4rem}
+    .expat-chip{padding:.45rem .75rem;background:var(--surface2);border:1px solid var(--border);border-radius:20px;font-size:.78rem;color:var(--muted);cursor:pointer;transition:all .15s}
+    .expat-chip.on{border-color:var(--c-green);color:var(--text);background:rgba(61,154,106,.12)}
+    .expat-chip:hover{border-color:var(--border-light)}
+    .expat-wizard-nav{display:flex;justify-content:space-between;margin-top:1.5rem;padding-top:1rem;border-top:1px solid var(--border)}
+    .expat-score-hero{display:flex;align-items:center;gap:1rem;margin-bottom:1.25rem;padding-bottom:1rem;border-bottom:1px solid var(--border)}
+    .expat-score-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:.5rem;margin-bottom:1.25rem}
+    @media(max-width:640px){.expat-score-grid{grid-template-columns:repeat(3,1fr)}}
+    .expat-dim-card{text-align:center;padding:.65rem .4rem;background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius)}
+    .expat-dim-card small{display:block;font-size:.62rem;text-transform:uppercase;color:var(--muted);margin:.2rem 0}
+    .expat-dim-card strong{font-size:1.1rem;color:var(--c-green)}
+    .expat-timeline-item{display:flex;gap:.75rem;padding:.55rem 0;border-bottom:1px solid var(--border)}
+    .expat-timeline-item:last-child{border:none}
+    .tl-month{font-size:.72rem;font-weight:600;color:var(--c-amber);min-width:2.5rem}
+    .expat-actions{display:flex;flex-wrap:wrap;gap:.5rem;margin-top:1.25rem;padding-top:1rem;border-top:1px solid var(--border)}
+    .expat-cta{font-size:.85rem}
     @media(max-width:768px){
       nav:not(#mainNav){display:none}
       .nav-toggle{display:inline-flex;align-items:center;gap:.4rem}
@@ -519,6 +548,7 @@
   <section id="tab-relocation" class="tab" aria-label="Simulador de mudança">
     <div class="profile-box">
       <h3>Simulador de expatriação — Europa</h3>
+      <p class="muted-text" style="margin-bottom:.75rem">Ranking europeu por perfil. Para análise completa por país (visto, fiscal, timeline), use <strong>Vale a pena morar aqui?</strong> no Histórico ou Guias.</p>
       <p class="muted-text" id="familyProfileSummary" style="margin-bottom:.75rem">Carregando perfil…</p>
       <div class="profile-form">
         <label>Composição<select id="fpHousehold" onchange="saveFamilyProfileFromForm()"><option value="couple">Casal</option><option value="solo">Individual</option></select></label>
@@ -706,6 +736,8 @@
 <script src="world-formulas.js"></script>
 <script src="world-guides.js"></script>
 <script src="world-planner.js"></script>
+<script src="world-expat-data.js"></script>
+<script src="world-expat-decision.js"></script>
 <script src="world-leaders.js"></script>
 <script src="world-app.js"></script>
 <script src="world-history.js"></script>

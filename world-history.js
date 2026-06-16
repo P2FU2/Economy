@@ -258,6 +258,7 @@ function renderHistoryPanel() {
   document.getElementById('histInfo').textContent = infoTxt;
 
   let detailHtml = '<div class="compare-header">' + flagImg(code, 'lg') + '<h3>' + c.name + '</h3>' + (typeof favoriteBtnHtml === 'function' ? favoriteBtnHtml(code) : '') + '</div>';
+  if (typeof expatBtnHtml === 'function') detailHtml += '<div class="form-row" style="margin-bottom:.75rem">' + expatBtnHtml(code) + '</div>';
   detailHtml += '<div class="hist-kpi-grid">';
   indIds.forEach((id, i) => {
     const ind = getInd(id);

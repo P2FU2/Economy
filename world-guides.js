@@ -157,7 +157,8 @@ function renderCountryGuide(code) {
   if (!el) return;
 
   if (!meta) {
-    el.innerHTML = '<p class="muted-text">Guia detalhado em construção para ' + c.name + '. Use os passos genéricos abaixo.</p>';
+    el.innerHTML = '<p class="muted-text">Guia detalhado em construção para ' + c.name + '.</p>' +
+      (typeof expatBtnHtml === 'function' ? '<div class="form-row">' + expatBtnHtml(code) + '</div>' : '');
     return;
   }
 
@@ -166,6 +167,7 @@ function renderCountryGuide(code) {
   html += countryCell(code, 'lg', true);
   html += '<span class="diff-badge ' + dl.cls + '">Dificuldade ' + diff + '/100 — ' + dl.text + '</span>';
   html += '<span class="guide-meta">Prazo: ' + meta.months + ' · Custo vida: ' + fmtNum(d.cost_living, 0) + ' · IDH: ' + fmtNum(d.hdi, 3) + '</span></div>';
+  if (typeof expatBtnHtml === 'function') html += '<div class="form-row" style="margin-bottom:1rem">' + expatBtnHtml(code) + '</div>';
 
   html += '<div class="grid grid-2" style="margin:1rem 0">';
   html += '<div class="card"><h3>Indicadores chave</h3>';

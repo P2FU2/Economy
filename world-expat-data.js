@@ -258,7 +258,10 @@ function getCityCostMult(code, city) {
   const map = CITY_COST_MULT[code] || CITY_COST_MULT.default;
   if (!city) return map.default || 1;
   const key = city.trim();
-  return map[key] || map.default || 1;
+  if (map[key]) return map[key];
+  const lower = key.toLowerCase();
+  const alias = Object.keys(map).find(k => k.toLowerCase() === lower || k.toLowerCase().startsWith(lower.slice(0, 4)));
+  return alias ? map[alias] : (map.default || 1);
 }
 
 function loadExpatProfile() {

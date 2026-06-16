@@ -6,7 +6,12 @@ let expatLastResult = null;
 let expatCharts = {};
 
 function openExpatDecision(code) {
-  expatTargetCode = code || document.getElementById('indCountry')?.value || 'ITA';
+  code = code || document.getElementById('indCountry')?.value || 'ITA';
+  if (code === 'BRA') {
+    if (typeof switchTab === 'function') switchTab('relocation');
+    return;
+  }
+  expatTargetCode = code;
   expatWizardStep = 0;
   expatLastResult = null;
   ensureExpatModal();
@@ -44,6 +49,7 @@ function ensureExpatModal() {
 
 function expatBtnHtml(code) {
   if (!getCountry(code)) return '';
+  if (code === 'BRA') return '';
   return '<button type="button" class="btn primary expat-cta" onclick="openExpatDecision(\'' + code + '\')">' +
     flagImg(code, 'xs') + ' Vale a pena morar aqui?</button>';
 }
@@ -203,7 +209,8 @@ function expatWizardPrev() {
   bindExpatChips();
 }
 
-function calcExpatScores(code, profile) {
+function calcExpatScores(code, profile, opts) {
+  opts = opts || {};
   const d = data[code] || {};
   const city = profile.targetCity;
   const monthlyLiving = estMonthlyLiving(code, city);
@@ -253,7 +260,9 @@ function calcExpatScores(code, profile) {
   const reversibility = calcReversibilityScore(code, profile);
   const alerts = buildExpatAlerts(code, profile, { monthlyLiving, netInc, monthsCover, visaPath, incomeRatio, langMonths, reversibility });
   const timeline = buildExpatTimeline(code, profile, visaPath);
-  const alternatives = findExpatAlternatives(code, profile, Math.round(overall), dims);
+  const alternatives = opts.skipAlternatives
+    ? []
+    : findExpatAlternatives(code, profile, Math.round(overall), dims);
 
   return {
     code, profile, dims, overall: Math.round(overall), visaPath, monthlyLiving, netInc, monthsCover, incomeRatio,
@@ -315,21 +324,46 @@ function buildExpatTimeline(code, profile, visaPath) {
 
 function findExpatAlternatives(code, profile, overall, dims) {
   return COUNTRIES.filter(c => c.code !== code && c.region === 'europe' && c.code !== 'RUS' && c.code !== 'GBR')
-    .map(c => { const r = calcExpatScores(c.code, profile); return { code: c.code, name: c.name, overall: r.overall, dims: r.dims }; })
+    .map(c => {
+      const r = calcExpatScores(c.code, profile, { skipAlternatives: true });
+      return { code: c.code, name: c.name, overall: r.overall, dims: r.dims };
+    })
     .sort((a, b) => b.overall - a.overall)
     .filter(s => s.overall >= overall - 8)
     .slice(0, 3);
 }
 
 function runExpatAnalysis() {
-  readExpatWizardProfile();
-  expatLastResult = calcExpatScores(expatTargetCode, loadExpatProfile());
-  renderExpatDashboard(expatLastResult);
+  try {
+    readExpatWizardProfile();
+    if (expatTargetCode === 'BRA') {
+      showExpatWizardError('O Brasil é seu país de origem. Abra esta análise a partir de um país de destino (ex.: Itália, Portugal) no Histórico ou Guias.');
+      return;
+    }
+    expatLastResult = calcExpatScores(expatTargetCode, loadExpatProfile());
+    renderExpatDashboard(expatLastResult);
+  } catch (err) {
+    console.error('runExpatAnalysis', err);
+    showExpatWizardError('Erro ao gerar análise. Tente refazer o wizard ou escolha outro país de destino.');
+  }
+}
+
+function showExpatWizardError(msg) {
+  const el = document.getElementById('expatModalContent');
+  if (!el) return;
+  el.innerHTML = '<div class="expat-wizard anim-in"><div class="expat-alert" style="padding:1rem;border:1px solid var(--c-red);border-radius:var(--radius);margin-bottom:1rem;font-size:.88rem">' +
+    msg + '</div><div class="expat-wizard-nav"><button type="button" class="btn secondary" onclick="expatWizardStep=2;expatLastResult=null;renderExpatWizard();bindExpatChips()">Voltar</button>' +
+    '<button type="button" class="btn primary" onclick="closeExpatModal();switchTab(\'relocation\')">Ir ao Simulador Europa</button></div></div>';
 }
 
 function runExpatAnalysisFromProfile() {
-  expatLastResult = calcExpatScores(expatTargetCode, loadExpatProfile());
-  renderExpatDashboard(expatLastResult);
+  try {
+    expatLastResult = calcExpatScores(expatTargetCode, loadExpatProfile());
+    renderExpatDashboard(expatLastResult);
+  } catch (err) {
+    console.error('runExpatAnalysisFromProfile', err);
+    showExpatWizardError('Erro ao recalcular análise.');
+  }
 }
 
 function renderExpatDashboard(result) {

@@ -522,57 +522,67 @@ function familyTopText(top, reserve) {
 }
 
 function renderFamilyProfile() {
-  const profile = typeof getFamilyProfile === 'function' ? getFamilyProfile() : null;
-  const europe = COUNTRIES.filter(c => c.region === 'europe' && c.code !== 'RUS' && c.code !== 'GBR');
+  const profile = typeof getMergedSimProfile === 'function' ? getMergedSimProfile() : (typeof getFamilyProfile === 'function' ? getFamilyProfile() : null);
+  const europe = typeof EUROPE_COUNTRIES === 'function' ? EUROPE_COUNTRIES() : COUNTRIES.filter(c => c.region === 'europe' && c.code !== 'RUS' && c.code !== 'GBR');
   const ranked = europe.map(c => {
+    const filter = typeof passesMustHaveFilters === 'function' ? passesMustHaveFilters(c.code, profile) : { pass: true };
     const score = calcFamilyEUScore(c.code, profile);
     const d = data[c.code] || {};
-    return { c, score, d, lang: LANG_EASE[c.code], job: JOB_ENTRY[c.code], eng: ENGLISH_JOBS[c.code] || ENGLISH_JOBS.default };
-  }).sort((a, b) => b.score - a.score);
+    const breakdown = typeof calcFamilyEUScoreBreakdown === 'function' ? calcFamilyEUScoreBreakdown(c.code, profile) : null;
+    const verdict = typeof getExpatVerdict === 'function' ? getExpatVerdict(c.code, profile) : null;
+    return { c, score, d, lang: LANG_EASE[c.code], job: JOB_ENTRY[c.code], eng: ENGLISH_JOBS[c.code] || ENGLISH_JOBS.default, filter, breakdown, verdict };
+  }).filter(x => x.filter.pass).sort((a, b) => b.score - a.score);
 
   const top = ranked[0];
   const top3 = ranked.slice(0, 3);
-  const ita = ranked.find(x => x.c.code === 'ITA');
-  const reserve = estMonthlyCost(top.c.code) + estRent(top.c.code);
+  const brCost = profile?.costSpUsd || estMonthlyLivingHousehold('BRA', profile);
 
-  let html = '<div class="grid grid-3 stagger-children" style="margin-top:1rem">';
+  let html = '<p class="muted-text sim-legend" style="font-size:.78rem;margin-bottom:.75rem">Comparação base: <strong>Brasil (SP)</strong> — custo declarado $' + fmtNum(brCost, 0) + '/mês. Índices de custo usam escala NYC=100. Aluguéis em USD estimados (cidade principal).</p>';
+
+  html += '<div class="grid grid-3 stagger-children" style="margin-top:.5rem">';
   top3.forEach((x, i) => {
     const rank = i === 0 ? '#1' : i === 1 ? '#2' : '#3';
-    html += '<div class="card flag-card reloc-card"><h3>' + rank + ' ' + countryCell(x.c.code, 'md') + '</h3>';
+    const interp = x.breakdown ? x.breakdown.interpretation : scoreInterpretation(x.score);
+    const destCost = typeof estMonthlyLivingHousehold === 'function' ? estMonthlyLivingHousehold(x.c.code, profile) : 0;
+    const delta = destCost - brCost;
+    const v = x.verdict || {};
+    html += '<div class="card flag-card reloc-card sim-top-card"><h3>' + rank + ' ' + countryCell(x.c.code, 'md') + '</h3>';
+    html += '<div class="sim-verdict-inline sim-verdict-' + (v.level || 'yellow') + '">' + (v.icon || '🟡') + ' ' + (v.label || interp) + '</div>';
     html += '<div class="kpi" style="font-size:1.4rem">' + x.score + '/100</div>';
-    html += '<p style="font-size:.82rem;color:var(--muted);margin-top:.5rem">Idioma: ' + fmtNum(x.lang, 0) + '/100 · Emprego: ' + fmtNum(100 - x.job, 0) + '/100<br>';
-    html += 'Custo: ' + fmtNum(x.d.cost_living, 0) + ' · Saúde: ' + fmtNum(x.d.healthcare, 0) + ' · Desemprego: ' + fmtNum(x.d.unemployment) + '%</p></div>';
+    html += '<p style="font-size:.78rem;color:var(--muted);margin-top:.25rem">' + interp + '</p>';
+    html += '<p style="font-size:.82rem;color:var(--muted);margin-top:.5rem">Custo est.: <strong>$' + fmtNum(destCost, 0) + '/mês</strong> (' + (delta > 0 ? '+' : '') + fmtNum(delta, 0) + ' vs SP)<br>';
+    html += 'Idioma ' + fmtNum(x.lang, 0) + '/100 · Emprego ' + fmtNum(100 - x.job, 0) + '/100 · Saúde ' + fmtNum(x.d.healthcare, 0) + '/100</p></div>';
   });
   html += '</div>';
 
-  if (ita) {
-    const itaRank = ranked.findIndex(x => x.c.code === 'ITA') + 1;
-    html += '<div class="card" style="margin-top:1rem;border-left:3px solid var(--c-green)">';
-    html += '<div class="compare-header">' + flagImg('ITA', 'lg') + '<h3>Itália — posição #' + itaRank + ' (score ' + ita.score + '/100)</h3></div>';
-    html += '<p style="font-size:.88rem">IDH ' + fmtNum(ita.d.hdi, 3) + ' · Felicidade ' + fmtNum(ita.d.happiness, 2) + ' · Custo vida ' + fmtNum(ita.d.cost_living, 0) + ' · Salário médio $' + fmtNum(ita.d.avg_salary, 0);
-    html += ' · Italiano aprendível em poucos meses para falantes de português. SNS universal. Bolsa família/Incentivi demografici para natalidade. Norte: emprego industrial/tech; Sul: custo menor.</p></div>';
+  if (top) {
+    html += '<div class="conclusion-block" style="margin-top:1rem"><h4>Recomendação interpretada</h4>';
+    html += '<p style="font-size:.9rem"><strong>1º ' + top.c.name + '</strong> — ' + (top.verdict ? top.verdict.line : familyTopText(top, estMonthlyCost(top.c.code) + estRent(top.c.code))) + '</p>';
+    html += '<p style="font-size:.85rem;margin-top:.5rem;color:var(--muted)">Clique num país na tabela ou busque acima para ver delta vs Brasil, trade-offs, curva de adaptação e prontidão.</p></div>';
   }
 
+  const reserveTip = typeof calcReserve9m === 'function' ? calcReserve9m(top?.c.code || 'PRT', profile).explain : '9 meses × custo mensal estimado do perfil.';
   html += '<div class="card" style="margin-top:1rem"><h3>Ranking completo — Europa <span style="font-weight:400;color:var(--muted);font-size:.78rem">(' + (typeof familyProfileLabel === 'function' ? familyProfileLabel(profile) : 'seu perfil') + ')</span></h3><div class="table-wrap"><table><thead><tr>';
-  html += '<th>#</th><th>País</th><th>Score</th><th>Idioma</th><th>Emprego</th><th>Inglês</th><th>Custo</th><th>Aluguel</th><th>Saúde</th><th>IDH</th><th>Reserva 9m</th></tr></thead><tbody>';
+  html += '<th>#</th><th>País</th><th>Score</th><th>Veredito</th><th>Idioma</th><th>Emprego</th><th title="Índice 0–100, Nova York = 100">Custo idx</th>';
+  html += '<th title="Aluguel 1BR estimado em USD/mês, cidade principal">Aluguel 1BR (USD)</th><th>Saúde</th><th title="' + reserveTip.replace(/"/g, '&quot;') + '">Reserva 9m ⓘ</th></tr></thead><tbody>';
   ranked.forEach((x, i) => {
-    html += '<tr data-family-code="' + x.c.code + '" id="family-row-' + x.c.code + '"><td>' + (i+1) + '</td><td>' + countryCell(x.c.code, 'sm', true) + '</td><td><strong>' + x.score + '</strong></td>';
-    html += '<td>' + fmtNum(x.lang, 0) + '</td><td>' + fmtNum(100 - x.job, 0) + '</td><td>' + fmtNum(x.eng, 0) + '%</td>';
-    html += '<td>' + fmtNum(x.d.cost_living, 0) + '</td><td>' + fmtNum(x.d.rent_index, 0) + '</td><td>' + fmtNum(x.d.healthcare, 0) + '</td>';
-    html += '<td>' + fmtNum(x.d.hdi, 3) + '</td><td>$' + fmtNum((estMonthlyCost(x.c.code) + estRent(x.c.code)) * 9 * 2 * 0.85, 0) + '</td></tr>';
+    const res = typeof calcReserve9m === 'function' ? calcReserve9m(x.c.code, profile) : { total: (estMonthlyCost(x.c.code) + estRent(x.c.code)) * 9 * 2 * 0.85 };
+    const v = x.verdict || {};
+    html += '<tr data-family-code="' + x.c.code + '" id="family-row-' + x.c.code + '" style="cursor:pointer" onclick="focusFamilyCountryByCode(\'' + x.c.code + '\')"><td>' + (i + 1) + '</td><td>' + countryCell(x.c.code, 'sm', true) + '</td>';
+    html += '<td><strong>' + x.score + '</strong><div style="font-size:.65rem;color:var(--muted)">' + (x.breakdown ? x.breakdown.interpretation : '') + '</div></td>';
+    html += '<td><span class="sim-verdict-dot sim-verdict-' + (v.level || 'yellow') + '">' + (v.icon || '') + '</span></td>';
+    html += '<td>' + fmtNum(x.lang, 0) + '</td><td>' + fmtNum(100 - x.job, 0) + '</td>';
+    html += '<td>' + fmtNum(x.d.cost_living, 0) + '</td><td>$' + fmtNum(estRent(x.c.code), 0) + '</td><td>' + fmtNum(x.d.healthcare, 0) + '</td>';
+    html += '<td>$' + fmtNum(res.total, 0) + '</td></tr>';
   });
-  html += '</tbody></table></div></div>';
-
-  html += '<div class="conclusion-block" style="margin-top:1rem"><h4>Recomendação</h4>';
-  html += '<p style="font-size:.9rem"><strong>1º ' + top.c.name + '</strong> — ' + familyTopText(top, reserve) + '</p>';
-  html += '<p style="font-size:.88rem;margin-top:.5rem"><strong>Estratégia:</strong> Reserva 9–12 meses → ' + top3.map(x => x.c.name).join(', ') + ' (ou Itália se preferirem cultura/medio custo) → validar diploma ENIC-NARIC → registro municipal UE. Veja o <strong>plano completo Itália</strong> na aba Guias País e organize tarefas na aba Planejamento.</p>';
-  html += '<p style="font-size:.85rem;color:var(--muted);margin-top:.5rem"><strong>Evitar no início:</strong> Alemanha, Áustria, Suíça, França sem idioma local.</p></div>';
+  html += '</tbody></table></div>';
+  html += '<p class="muted-text" style="font-size:.72rem;margin-top:.5rem">ⓘ <strong>Reserva 9m</strong>: ' + reserveTip + '</p></div>';
 
   const el = document.getElementById('familyProfileResult');
   if (el) el.innerHTML = html;
   const resEl = document.getElementById('resFamilyEU');
-  if (resEl) resEl.innerHTML = 'Top 3: ' + top3.map(x => flagImg(x.c.code, 'xs') + ' ' + x.c.name + ' (' + x.score + ')').join(' · ');
-  initCountrySearch('familySearch', null, focusFamilyCountryByCode);
+  if (resEl && top3.length) resEl.innerHTML = 'Top 3: ' + top3.map(x => flagImg(x.c.code, 'xs') + ' ' + x.c.name + ' (' + x.score + ')').join(' · ');
+  if (typeof initEuropeFamilySearch === 'function') initEuropeFamilySearch();
 }
 
 function focusFamilyCountry() {
@@ -588,22 +598,27 @@ function focusFamilyCountry() {
 
 function focusFamilyCountryByCode(code) {
   const el = document.getElementById('familyProfileResult');
-  if (!el) return;
-  const row = el.querySelector('[data-family-code="' + code + '"]');
-  if (row) {
-    row.scrollIntoView({ behavior: 'smooth', block: 'center' });
-    row.style.outline = '2px solid var(--c-amber)';
-    setTimeout(() => { row.style.outline = ''; }, 2500);
+  if (el) {
+    const row = el.querySelector('[data-family-code="' + code + '"]');
+    if (row) {
+      row.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      row.style.outline = '2px solid var(--c-amber)';
+      setTimeout(() => { row.style.outline = ''; }, 2500);
+    }
   }
   const c = getCountry(code);
-  const d = data[code] || {};
-  const score = calcFamilyEUScore(code, typeof getFamilyProfile === 'function' ? getFamilyProfile() : null);
   const banner = document.getElementById('familyCountryFocus');
-  if (banner && c) {
+  if (banner && c && typeof buildCountryAnalysisHtml === 'function') {
+    const profile = typeof getMergedSimProfile === 'function' ? getMergedSimProfile() : getFamilyProfile();
+    banner.innerHTML = '<div class="card sim-country-focus" style="margin-top:1rem;border-left:3px solid var(--c-amber)">' +
+      '<div class="compare-header">' + flagImg(code, 'lg') + '<h3>' + c.name + '</h3></div>' +
+      buildCountryAnalysisHtml(code, profile) + '</div>';
+    banner.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  } else if (banner && c) {
+    const d = data[code] || {};
+    const score = calcFamilyEUScore(code, typeof getFamilyProfile === 'function' ? getFamilyProfile() : null);
     banner.innerHTML = '<div class="card" style="margin-top:1rem;border-left:3px solid var(--c-amber)">' +
-      '<div class="compare-header">' + flagImg(code, 'lg') + '<h3>' + c.name + ' — score ' + score + '/100</h3></div>' +
-      '<p class="muted-text" style="font-size:.85rem">Idioma ' + fmtNum(LANG_EASE[code] || 0, 0) + '/100 · Custo ' + fmtNum(d.cost_living, 0) +
-      ' · Saúde ' + fmtNum(d.healthcare, 0) + ' · Reserva 9m $' + fmtNum((estMonthlyCost(code) + estRent(code)) * 9 * 2 * 0.85, 0) + '</p></div>';
+      '<div class="compare-header">' + flagImg(code, 'lg') + '<h3>' + c.name + ' — score ' + score + '/100</h3></div></div>';
   }
 }
 

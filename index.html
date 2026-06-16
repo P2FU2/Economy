@@ -313,6 +313,44 @@
     .profile-form{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:.65rem;margin:.85rem 0}
     .profile-form label{display:flex;flex-direction:column;gap:.3rem;font-size:.68rem;color:var(--muted);text-transform:uppercase;letter-spacing:.04em}
     .profile-form select,.profile-form input{width:100%}
+    .profile-musthave{grid-column:1/-1;display:flex;flex-wrap:wrap;gap:.5rem .85rem;margin-top:.25rem}
+    .profile-musthave label{flex-direction:row!important;align-items:center;text-transform:none;font-size:.78rem!important;letter-spacing:0;color:var(--text)!important;cursor:pointer}
+    .profile-musthave input{width:auto;margin-right:.35rem}
+    .sim-verdict{padding:.85rem 1rem;border-radius:var(--radius);margin:.75rem 0;font-size:.88rem}
+    .sim-verdict p{margin:.35rem 0 0;font-size:.82rem;color:var(--muted)}
+    .sim-verdict-green{background:rgba(61,154,106,.12);border:1px solid rgba(61,154,106,.35)}
+    .sim-verdict-yellow{background:rgba(201,162,39,.1);border:1px solid rgba(201,162,39,.35)}
+    .sim-verdict-red{background:rgba(196,92,92,.1);border:1px solid rgba(196,92,92,.35)}
+    .sim-verdict-inline{font-size:.72rem;margin:.35rem 0 .5rem;padding:.25rem .5rem;border-radius:4px;display:inline-block}
+    .sim-verdict-dot{font-size:.9rem}
+    .sim-score-head{display:flex;align-items:baseline;gap:.75rem;margin:.5rem 0 1rem;flex-wrap:wrap}
+    .sim-score-num{font-size:1.6rem;font-weight:700;color:var(--c-green)}
+    .sim-score-label{font-size:.85rem;color:var(--muted)}
+    .sim-breakdown{display:grid;gap:.65rem;margin:1rem 0}
+    .sim-dim{padding:.65rem .75rem;background:var(--surface2);border-radius:var(--radius);font-size:.82rem}
+    .sim-dim p{margin:.25rem 0 0;color:var(--muted);font-size:.78rem;line-height:1.45}
+    .sim-section{margin:1.25rem 0}
+    .sim-section h4{font-size:.85rem;margin-bottom:.5rem;text-transform:uppercase;letter-spacing:.04em;color:var(--muted)}
+    .sim-delta-good{color:var(--c-green)}
+    .sim-delta-bad{color:var(--c-red)}
+    .sim-tradeoffs{display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin:1rem 0}
+    @media(max-width:700px){.sim-tradeoffs{grid-template-columns:1fr}}
+    .sim-gains,.sim-losses{padding:.75rem;border-radius:var(--radius);font-size:.82rem}
+    .sim-gains{background:rgba(61,154,106,.08);border:1px solid rgba(61,154,106,.2)}
+    .sim-losses{background:rgba(196,92,92,.06);border:1px solid rgba(196,92,92,.18)}
+    .sim-gains h4,.sim-losses h4{font-size:.78rem;margin-bottom:.5rem}
+    .sim-gains ul,.sim-losses ul{margin:0;padding-left:1.1rem;line-height:1.5}
+    .sim-timeline{display:grid;gap:.5rem}
+    .sim-phase{padding:.6rem .75rem;border-left:3px solid var(--c-blue);background:var(--surface2);border-radius:0 var(--radius) var(--radius) 0;font-size:.8rem}
+    .sim-phase-range{font-size:.65rem;text-transform:uppercase;color:var(--c-amber);display:block;margin-bottom:.2rem}
+    .sim-phase p{margin:.2rem 0 0;color:var(--muted);font-size:.76rem}
+    .sim-sensitivity{display:flex;flex-wrap:wrap;gap:.75rem 1.25rem;font-size:.82rem}
+    .sim-readiness{margin:1rem 0;padding:.75rem;background:var(--surface2);border-radius:var(--radius)}
+    .sim-checklist{list-style:none;padding:0;margin:.5rem 0 0;font-size:.8rem}
+    .sim-checklist .ok{color:var(--c-green)}
+    .sim-checklist .miss{color:var(--c-amber)}
+    .sim-actions{margin-top:1rem;display:flex;flex-wrap:wrap;gap:.5rem}
+    .sim-country-focus .sim-analysis{margin-top:.5rem}
     .config-advanced{margin-top:.75rem;font-size:.85rem;color:var(--muted)}
     .config-advanced summary{cursor:pointer;color:var(--text);padding:.35rem 0}
     .chart-toolbar{display:flex;justify-content:flex-end;align-items:center;gap:.5rem;margin-bottom:.5rem;flex-wrap:wrap}
@@ -551,11 +589,29 @@
       <p class="muted-text" style="margin-bottom:.75rem">Ranking europeu por perfil. Para análise completa por país (visto, fiscal, timeline), use <strong>Vale a pena morar aqui?</strong> no Histórico ou Guias.</p>
       <p class="muted-text" id="familyProfileSummary" style="margin-bottom:.75rem">Carregando perfil…</p>
       <div class="profile-form">
-        <label>Composição<select id="fpHousehold" onchange="saveFamilyProfileFromForm()"><option value="couple">Casal</option><option value="solo">Individual</option></select></label>
+        <label>Composição<select id="fpHousehold" onchange="saveFamilyProfileFromForm()"><option value="couple">Casal</option><option value="solo">Individual</option><option value="family">Família</option></select></label>
         <label>Idade<input type="number" id="fpAge" min="18" max="70" value="30" onchange="saveFamilyProfileFromForm()"></label>
         <label>Escolaridade<select id="fpEducation" onchange="saveFamilyProfileFromForm()"><option value="superior">Superior</option><option value="medio">Médio</option><option value="pos">Pós-graduação</option></select></label>
         <label>Cidadania UE<select id="fpEuCitizen" onchange="saveFamilyProfileFromForm()"><option value="yes">Sim</option><option value="no">Não</option></select></label>
         <label>Objetivo<select id="fpGoal" onchange="saveFamilyProfileFromForm()"><option value="family">Formar família</option><option value="career">Carreira</option><option value="study">Estudos</option><option value="retire">Aposentadoria</option></select></label>
+        <label>Renda/mês<input type="number" id="fpIncome" value="3500" min="0" step="100" onchange="saveFamilyProfileFromForm()"></label>
+        <label>Moeda<select id="fpIncomeCurrency" onchange="saveFamilyProfileFromForm()"><option value="USD">USD</option><option value="BRL">BRL</option><option value="EUR">EUR</option></select></label>
+        <label>Tipo renda<select id="fpIncomeType" onchange="saveFamilyProfileFromForm()"><option value="remote">Remoto autônomo</option><option value="entrepreneur">Empresário remoto</option><option value="clt_br">CLT local BR</option><option value="local">Renda local destino</option><option value="passive">Aposentadoria/passiva</option></select></label>
+        <label>Reserva (USD)<input type="number" id="fpReserve" value="20000" min="0" step="500" onchange="saveFamilyProfileFromForm()"></label>
+        <label>Custo SP (USD/mês)<input type="number" id="fpCostSp" value="2800" min="0" step="100" onchange="saveFamilyProfileFromForm()" title="Quanto você gasta hoje em São Paulo — base de comparação"></label>
+        <label>Prazo mudança<select id="fpTimeline" onchange="saveFamilyProfileFromForm()"><option value="lt6">Menos de 6m</option><option value="6-12" selected>6–12 meses</option><option value="1-2y">1–2 anos</option><option value="2-4y">2–4 anos</option><option value="explore">Explorando</option></select></label>
+        <label>Caminho entrada<select id="fpCitizenship" onchange="saveFamilyProfileFromForm()"><option value="br_only">Brasileiro apenas</option><option value="ita_ancestry">Ascendência italiana</option><option value="eu_ancestry">Ascendência outra UE</option><option value="eu_citizen">Cidadania UE</option><option value="other">Green Card / outro</option></select></label>
+        <label>Idioma destino<select id="fpLangLevel" onchange="saveFamilyProfileFromForm()"><option value="none">Zero</option><option value="basic" selected>Básico</option><option value="intermediate">Intermediário</option><option value="advanced">Fluente</option></select></label>
+        <label>Voltar ao BR?<select id="fpReturnPlan" onchange="saveFamilyProfileFromForm()"><option value="definitive">Definitivo</option><option value="maybe" selected>Talvez 5–10 anos</option><option value="temp">Temporário 2–4 anos</option></select></label>
+        <label>Aversão risco (1–5)<input type="range" id="fpRisk" min="1" max="5" value="3" onchange="saveFamilyProfileFromForm()"></label>
+        <div class="profile-musthave"><span style="font-size:.68rem;color:var(--muted);width:100%;text-transform:uppercase;letter-spacing:.04em">Não abro mão de:</span>
+          <label><input type="checkbox" id="fpMust_warm" onchange="saveFamilyProfileFromForm()"> Clima quente</label>
+          <label><input type="checkbox" id="fpMust_lowcost" onchange="saveFamilyProfileFromForm()"> Custo baixo</label>
+          <label><input type="checkbox" id="fpMust_english" onchange="saveFamilyProfileFromForm()"> Inglês dia a dia</label>
+          <label><input type="checkbox" id="fpMust_safety" onchange="saveFamilyProfileFromForm()"> Alta segurança</label>
+          <label><input type="checkbox" id="fpMust_community" onchange="saveFamilyProfileFromForm()"> Comunidade BR</label>
+          <label><input type="checkbox" id="fpMust_healthcare" onchange="saveFamilyProfileFromForm()"> Saúde pública</label>
+        </div>
       </div>
       <button class="btn primary" onclick="saveFamilyProfileFromForm();renderFamilyProfile()">Analisar melhor país na Europa</button>
       <div class="form-row" style="margin-top:.75rem">
@@ -737,6 +793,7 @@
 <script src="world-guides.js"></script>
 <script src="world-planner.js"></script>
 <script src="world-expat-data.js"></script>
+<script src="world-simulator.js"></script>
 <script src="world-expat-decision.js"></script>
 <script src="world-leaders.js"></script>
 <script src="world-app.js"></script>

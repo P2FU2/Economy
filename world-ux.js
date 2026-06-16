@@ -40,8 +40,24 @@ const DEFAULT_FAMILY_PROFILE = {
   age: 30,
   education: 'superior',
   euCitizen: true,
-  goal: 'family'
+  goal: 'family',
+  monthlyIncome: 3500,
+  incomeCurrency: 'USD',
+  incomeType: 'remote',
+  reserve: 20000,
+  costSpUsd: 2800,
+  timeline: '6-12',
+  citizenshipPath: 'br_only',
+  langLevel: 'basic',
+  returnPlan: 'maybe',
+  riskTolerance: 3,
+  mustHave: []
 };
+
+function readMustHaveFromForm() {
+  const keys = ['warm', 'lowcost', 'english', 'safety', 'community', 'healthcare'];
+  return keys.filter(k => document.getElementById('fpMust_' + k)?.checked);
+}
 
 function getFamilyProfile() {
   try {
@@ -58,9 +74,41 @@ function saveFamilyProfileFromForm() {
     age: +(document.getElementById('fpAge')?.value) || 30,
     education: document.getElementById('fpEducation')?.value || 'superior',
     euCitizen: document.getElementById('fpEuCitizen')?.value === 'yes',
-    goal: document.getElementById('fpGoal')?.value || 'family'
+    goal: document.getElementById('fpGoal')?.value || 'family',
+    monthlyIncome: +(document.getElementById('fpIncome')?.value) || 3500,
+    incomeCurrency: document.getElementById('fpIncomeCurrency')?.value || 'USD',
+    incomeType: document.getElementById('fpIncomeType')?.value || 'remote',
+    reserve: +(document.getElementById('fpReserve')?.value) || 20000,
+    costSpUsd: +(document.getElementById('fpCostSp')?.value) || 2800,
+    timeline: document.getElementById('fpTimeline')?.value || '6-12',
+    citizenshipPath: document.getElementById('fpCitizenship')?.value || 'br_only',
+    langLevel: document.getElementById('fpLangLevel')?.value || 'basic',
+    returnPlan: document.getElementById('fpReturnPlan')?.value || 'maybe',
+    riskTolerance: +(document.getElementById('fpRisk')?.value) || 3,
+    mustHave: readMustHaveFromForm()
   };
   localStorage.setItem(FAMILY_PROFILE_KEY, JSON.stringify(p));
+  try {
+    if (typeof loadExpatProfile === 'function' && typeof EXPAT_PROFILE_KEY !== 'undefined') {
+      const expat = loadExpatProfile();
+      const merged = {
+        ...expat,
+        household: p.household,
+        age: p.age,
+        education: p.education,
+        euCitizen: p.euCitizen,
+        goal: p.goal,
+        monthlyIncome: p.monthlyIncome,
+        incomeCurrency: p.incomeCurrency,
+        incomeType: p.incomeType,
+        reserve: p.reserve,
+        timelineMonths: typeof SIM_TIMELINE_MONTHS !== 'undefined' ? (SIM_TIMELINE_MONTHS[p.timeline] || 12) : 12,
+        langLevel: p.langLevel,
+        riskTolerance: p.riskTolerance
+      };
+      localStorage.setItem(EXPAT_PROFILE_KEY, JSON.stringify(merged));
+    }
+  } catch (e) { /* noop */ }
   updateFamilyProfileSummary();
   if (typeof renderFamilyProfile === 'function') renderFamilyProfile();
   return p;
@@ -68,11 +116,13 @@ function saveFamilyProfileFromForm() {
 
 function familyProfileLabel(p) {
   p = p || getFamilyProfile();
-  const hh = p.household === 'solo' ? 'Individual' : 'Casal';
+  const hh = p.household === 'solo' ? 'Individual' : p.household === 'family' ? 'Família' : 'Casal';
   const edu = { superior: 'Superior', medio: 'Médio', pos: 'Pós-graduação' }[p.education] || 'Superior';
   const goal = { family: 'Formar família', career: 'Carreira', study: 'Estudos', retire: 'Aposentadoria' }[p.goal] || 'Família';
   const eu = p.euCitizen ? 'Cidadania UE' : 'Sem cidadania UE';
-  return hh + ' · ' + p.age + ' anos · ' + edu + ' · ' + eu + ' · ' + goal;
+  const cur = p.incomeCurrency || 'USD';
+  const inc = p.monthlyIncome ? ' · $' + fmtNum(typeof incomeInUsd === 'function' ? incomeInUsd(p) : p.monthlyIncome, 0) + '/mês (' + cur + ')' : '';
+  return hh + ' · ' + p.age + ' anos · ' + edu + ' · ' + eu + ' · ' + goal + inc;
 }
 
 function updateFamilyProfileSummary() {
@@ -83,12 +133,25 @@ function updateFamilyProfileSummary() {
 function initFamilyProfileForm() {
   const p = getFamilyProfile();
   const set = (id, val) => { const el = document.getElementById(id); if (el) el.value = val; };
+  const setCheck = (id, on) => { const el = document.getElementById(id); if (el) el.checked = !!on; };
   set('fpHousehold', p.household);
   set('fpAge', p.age);
   set('fpEducation', p.education);
   set('fpEuCitizen', p.euCitizen ? 'yes' : 'no');
   set('fpGoal', p.goal);
+  set('fpIncome', p.monthlyIncome || 3500);
+  set('fpIncomeCurrency', p.incomeCurrency || 'USD');
+  set('fpIncomeType', p.incomeType || 'remote');
+  set('fpReserve', p.reserve || 20000);
+  set('fpCostSp', p.costSpUsd || 2800);
+  set('fpTimeline', p.timeline || '6-12');
+  set('fpCitizenship', p.citizenshipPath || 'br_only');
+  set('fpLangLevel', p.langLevel || 'basic');
+  set('fpReturnPlan', p.returnPlan || 'maybe');
+  set('fpRisk', p.riskTolerance || 3);
+  (p.mustHave || []).forEach(k => setCheck('fpMust_' + k, true));
   updateFamilyProfileSummary();
+  if (typeof initEuropeFamilySearch === 'function') initEuropeFamilySearch();
 }
 
 function buildMainNav() {

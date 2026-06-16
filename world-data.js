@@ -301,13 +301,19 @@ function initCountrySearch(inputId, selectId, onPick, opts) {
   opts = opts || {};
   const input = document.getElementById(inputId);
   const sel = selectId ? document.getElementById(selectId) : null;
-  if (!input || input.dataset.bound) return;
+  if (!input) return;
+  const pool = opts.pool || COUNTRIES;
+  if (input.dataset.bound) {
+    input._countrySearchPool = pool;
+    return;
+  }
   input.dataset.bound = '1';
+  input._countrySearchPool = pool;
   if (sel) sel.classList.add('visually-hidden');
   input.setAttribute('role', 'combobox');
   input.setAttribute('aria-autocomplete', 'list');
   input.setAttribute('aria-expanded', 'false');
-  const pool = opts.pool || COUNTRIES;
+  const getPool = () => input._countrySearchPool || COUNTRIES;
   const listId = inputId + 'Dropdown';
   let list = document.getElementById(listId);
   if (!list) {
@@ -351,19 +357,20 @@ function initCountrySearch(inputId, selectId, onPick, opts) {
 
   input.addEventListener('input', () => {
     activeIdx = -1;
-    renderList(searchCountries(input.value, 8, pool));
+    renderList(searchCountries(input.value, 8, getPool()));
   });
   input.addEventListener('focus', () => {
     activeIdx = -1;
-    renderList(searchCountries(input.value, 8, pool));
+    renderList(searchCountries(input.value, 8, getPool()));
   });
   input.addEventListener('blur', () => {
     setTimeout(() => {
       list.classList.remove('open');
       input.setAttribute('aria-expanded', 'false');
       const q = (input.value || '').trim();
-      const exact = COUNTRIES.find(x => x.name.toLowerCase() === q.toLowerCase() || x.code.toLowerCase() === q.toLowerCase());
-      const match = exact || searchCountries(q, 1, pool)[0];
+      const p = getPool();
+      const exact = p.find(x => x.name.toLowerCase() === q.toLowerCase() || x.code.toLowerCase() === q.toLowerCase());
+      const match = exact || searchCountries(q, 1, p)[0];
       if (match) pickCountry(inputId, selectId, match.code, onPick);
       else syncFromSelect();
     }, 150);
@@ -383,7 +390,7 @@ function initCountrySearch(inputId, selectId, onPick, opts) {
       e.preventDefault();
       const code = activeIdx >= 0 && items[activeIdx]
         ? items[activeIdx].dataset.code
-        : (searchCountries(input.value, 1, pool)[0] || {}).code;
+        : (searchCountries(input.value, 1, getPool())[0] || {}).code;
       if (code) pickCountry(inputId, selectId, code, onPick);
     } else if (e.key === 'Escape') {
       list.classList.remove('open');

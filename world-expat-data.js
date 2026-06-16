@@ -322,3 +322,190 @@ function calcReversibilityScore(code, profile) {
   if (profile.euCitizen) s -= 5;
   return Math.round(Math.max(10, Math.min(95, s)));
 }
+
+/* Trade-offs estáticos por país (filtrados por perfil em world-simulator.js) */
+const COUNTRY_TRADEOFFS = {
+  PRT: {
+    gains: [
+      'Português nativo — barreira linguística mínima',
+      'Custo de vida 40–50% abaixo do Norte da Europa',
+      'SNS público + rede privada acessível',
+      'Comunidade brasileira grande (220k+) e advogados especializados',
+      'Vistos D7/D8 relativamente acessíveis para renda remota',
+      'Clima ameno e segurança superior ao Brasil'
+    ],
+    losses: [
+      'Salários médios baixos vs. Irlanda/Alemanha — difícil emprego local bem pago',
+      'Mercado tech concentrado em Lisboa/Porto',
+      'Burocracia imigratória (AIMA) com filas longas',
+      'Aluguel em Lisboa subiu 40%+ desde 2020',
+      'Distância emocional do Brasil (~10h de voo)',
+      'NHR extinto — fiscal menos favorável que antes para novos residentes'
+    ]
+  },
+  ITA: {
+    gains: [
+      'Italiano próximo ao português — autonomia linguística em meses',
+      'SNS universal gratuito — excelente para família',
+      'Regime fiscal especial (flat tax / impatriati) para novos residentes',
+      'Segurança urbana e qualidade cultural muito superior ao BR',
+      'Cidadania UE via processo judicial (se elegível) — livre circulação',
+      'Custo Sul/Neste muito menor que Milão'
+    ],
+    losses: [
+      'Burocracia italiana lenta — tudo em italiano, sem exceções',
+      'Mercado de trabalho local fraco (desemprego jovens 20%+)',
+      'Norte: custo 60–80% acima de SP; inverno longo e cinza',
+      'IRPEF até 43% sem regime especial',
+      'Processo de cidadania judicial: 12–24 meses e ~USD 8k',
+      'Rede profissional do zero — produtividade cai no ano 1'
+    ]
+  },
+  ESP: {
+    gains: [
+      'Espanhol aprendido em 3–6 meses vindo do português',
+      'Economia maior que Portugal — mais vagas setoriais',
+      'Sistema público de saúde sólido + clima quente',
+      'Comunidade brasileira forte (150k+)',
+      'Beckham Law para qualificados — 24% fixo por 6 anos',
+      'Custo moderado fora de Madrid/Barcelona'
+    ],
+    losses: [
+      'Desemprego estrutural alto no Sul',
+      'Burocracia autonômica variável (Catalunha vs. Madrid)',
+      'Aluguel em Barcelona/Madrid comparável a capitais do Norte',
+      'Salários médios abaixo de Alemania/Irlanda',
+      'Impostos autônomos complexos (IRPF + IVA)',
+      'Distância familiar — mesma latência emocional que Portugal'
+    ]
+  },
+  IRL: {
+    gains: [
+      'Inglês elimina barreira linguística imediata',
+      'Hub tech europeu — Google, Meta, Stripe',
+      'Salários altos em TI e finanças',
+      'Sistema público HSE + economia dinâmica',
+      'Tratado fiscal BR — sem bitributação na maioria dos casos'
+    ],
+    losses: [
+      'Custo de vida entre os mais altos da UE (Dublin)',
+      'Crise habitacional — aluguel 1BR frequentemente >USD 2.000',
+      'Clima frio, chuvoso, pouca luz no inverno',
+      'Visto de trabalho exige employer sponsor — difícil para autônomo',
+      'Comunidade BR menor que PT/ES',
+      'Reserva mínima recomendada: 12+ meses, não 9'
+    ]
+  },
+  DEU: {
+    gains: [
+      'Economia mais forte da UE — emprego industrial/tech',
+      'Saúde pública excelente (GKV)',
+      'Segurança, infraestrutura, transporte público',
+      'Salários altos em engenharia e TI',
+      'Tratado BR evita bitributação'
+    ],
+    losses: [
+      'Alemão obrigatório para integração real — 12–18 meses de estudo',
+      'Burocracia Anmeldung, Steuer-ID, Krankenkasse — penosa',
+      'Clima frio, dias curtos no inverno',
+      'Custo alto em München, Frankfurt, Hamburg',
+      'Cultura reservada — integração social lenta',
+      'Sem cidadania UE: visto de trabalho competitivo'
+    ]
+  },
+  FRA: {
+    gains: [
+      'Sistema público de saúde top mundial',
+      'Cultura, gastronomia, infraestrutura',
+      'Mercado de trabalho grande — Paris, Lyon',
+      'Tratado fiscal BR'
+    ],
+    losses: [
+      'Francês essencial — barreira alta para brasileiros',
+      'Burocracia préfecture notoriously lenta',
+      'Paris: custo de vida extremo',
+      'Impostos altos (45%+ faixa superior)',
+      'Integração social exige fluência e rede local'
+    ]
+  },
+  NLD: {
+    gains: [
+      'Inglês amplamente falado em ambiente profissional',
+      '30% ruling para expatriados qualificados',
+      'Economia aberta, hub logístico/fintech',
+      'Infraestrutura ciclística, qualidade de vida'
+    ],
+    losses: [
+      'Aluguel crise em Amsterdam — USD 1.800+ 1BR',
+      'Holandês necessário para vida cotidiana longo prazo',
+      'Clima chuvoso, vento, inverno escuro',
+      'Impostos altos mesmo com 30% ruling',
+      'Mercado imobiliário extremamente competitivo'
+    ]
+  },
+  GRC: {
+    gains: [
+      'Custo de vida baixo vs. Europa Ocidental',
+      'Flat tax 7% para aposentados (condições)',
+      'Clima mediterrâneo, ilhas, lifestyle',
+      'Golden visa / investimento relativamente acessível'
+    ],
+    losses: [
+      'Economia frágil pós-crise — emprego local escasso',
+      'Burocracia grega ainda lenta',
+      'Salários baixos — dependência de renda remota',
+      'Grego difícil; inglês limitado fora de turismo',
+      'Sistema público sobrecarregado em Atenas'
+    ]
+  },
+  default: {
+    gains: [
+      'Acesso ao mercado europeu e sistema público de saúde',
+      'Segurança e estabilidade institucional superiores ao BR',
+      'Mobilidade Schengen com residência válida',
+      'Tratado fiscal BR na maioria dos países UE'
+    ],
+    losses: [
+      'Barreira linguística e burocrática no primeiro ano',
+      'Custo de adaptação subestimado (tempo, dinheiro, energia)',
+      'Distância do Brasil — visitas caras e raras',
+      'Rede profissional e social reconstruída do zero',
+      'Renda em BRL exposta a risco cambial'
+    ]
+  }
+};
+
+const ADAPTATION_PHASES = {
+  PRT: [
+    { range: 'Mês 1–3', title: 'Euforia + burocracia', desc: 'NIF, conta bancária, AIMA/CRUE, seguro saúde, busca de moradia. Custo alto, produtividade baixa.' },
+    { range: 'Mês 3–9', title: 'Choque cultural leve', desc: 'Diferenças sutis PT-BR vs. PT-PT, mercado de trabalho local limitado, sazonalidade de amizades.' },
+    { range: 'Mês 9–18', title: 'Estabilização', desc: 'Rotina, SNS ativo, rede de expats + locais, português pleno no dia a dia.' },
+    { range: 'Mês 18+', title: 'Integração', desc: 'Decisão informada: ficar, mudar de cidade ou voltar — com dados reais de custo e renda.' }
+  ],
+  ITA: [
+    { range: 'Mês 1–3', title: 'Euforia + burocracia intensa', desc: 'Codice fiscale, Comune, tessera sanitaria, conta, contrato de aluguel. Tudo em italiano.' },
+    { range: 'Mês 3–9', title: 'Choque cultural + idioma', desc: 'Fase mais difícil — burocracia surpreende, italiano ainda trava tarefas simples, solidão possível.' },
+    { range: 'Mês 9–18', title: 'Estabilização', desc: 'Rotina, italiano funcional (B1), rede começando, regime fiscal definido.' },
+    { range: 'Mês 18+', title: 'Integração', desc: 'Decisão de ficar baseada em experiência real — não em expectativa de Instagram.' }
+  ],
+  ESP: [
+    { range: 'Mês 1–3', title: 'Arranque administrativo', desc: 'NIE, empadronamiento, seguridad social, abertura de conta, moradia.' },
+    { range: 'Mês 3–9', title: 'Adaptação linguística', desc: 'Espanhol cotidiano vs. português — diferenças regionais, mercado de trabalho local.' },
+    { range: 'Mês 9–18', title: 'Estabilização', desc: 'Rede social, rotina de saúde pública, custo de vida real conhecido.' },
+    { range: 'Mês 18+', title: 'Integração', desc: 'Avaliação honesta de permanência — especialmente se renda é remota em BRL.' }
+  ],
+  default: [
+    { range: 'Mês 1–3', title: 'Euforia + burocracia', desc: 'Documentos, moradia, saúde, conta bancária — custo e stress acima do esperado.' },
+    { range: 'Mês 3–9', title: 'Choque cultural', desc: 'Idioma, solidão, burocracia repetida — maior risco de desistência.' },
+    { range: 'Mês 9–18', title: 'Estabilização', desc: 'Rotina formada, idioma funcional, rede inicial.' },
+    { range: 'Mês 18+', title: 'Integração', desc: 'Decisão de ficar ou voltar com base em dados, não expectativas.' }
+  ]
+};
+
+function getCountryTradeoffs(code) {
+  return COUNTRY_TRADEOFFS[code] || COUNTRY_TRADEOFFS.default;
+}
+
+function getAdaptationPhases(code) {
+  return ADAPTATION_PHASES[code] || ADAPTATION_PHASES.default;
+}

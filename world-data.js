@@ -233,7 +233,9 @@ function mergeEmbeddedHistory(histRef) {
 }
 
 function getHistSeries(code, indId) {
-  return (history[code] && history[code][indId]) || [];
+  const pts = (history[code] && history[code][indId]) || [];
+  if (pts.length < 2) return pts;
+  return [...pts].sort((a, b) => a.year - b.year);
 }
 
 function toggleCollapse(id) {

@@ -92,6 +92,8 @@ async function loadLiveData(force = false) {
   const txt = document.getElementById('statusText');
   const prog = document.getElementById('loadProgress');
   dot.className = 'status-dot loading';
+  if (typeof setAppLoading === 'function') setAppLoading(true, 'Preparando painel…');
+  if (typeof renderOverviewSkeleton === 'function') renderOverviewSkeleton();
 
   const active = getActiveList().map(c => c.code);
   let apiCalls = 0;
@@ -103,17 +105,24 @@ async function loadLiveData(force = false) {
     fromCache = restored.restored;
     mergeEmbeddedHistory(history);
     updateHistRange();
-    txt.textContent = fromCache
-      ? 'Cache local: ' + fromCache + ' séries · verificando atualizações...'
-      : 'Buscando World Bank API (1960–2025)...';
-  } else {
-    txt.textContent = 'Buscando World Bank API (1960–2025)...';
+    const msg = fromCache
+      ? 'Cache: ' + fromCache + ' séries · verificando atualizações…'
+      : 'Buscando World Bank (1960–2025)…';
+    if (txt) txt.textContent = msg;
+    if (typeof setLoadProgress === 'function') setLoadProgress(8, msg);
+  } else if (txt) {
+    txt.textContent = 'Buscando World Bank (1960–2025)…';
   }
 
   const total = WB_INDICATORS.length;
+  let fetched = 0;
   for (let i = 0; i < WB_INDICATORS.length; i++) {
     const ind = WB_INDICATORS[i];
-    prog.style.width = ((i / total) * 100) + '%';
+    const pct = 10 + ((i / total) * 85);
+    if (prog) prog.style.width = pct + '%';
+    if (typeof setLoadProgress === 'function') {
+      setLoadProgress(pct, 'Indicador ' + (i + 1) + '/' + total + ': ' + ind.label + '…');
+    }
 
     const need = typeof WorldDB !== 'undefined'
       ? WorldDB.needsIndicatorFetch(history, ind.id, active)
@@ -124,6 +133,7 @@ async function loadLiveData(force = false) {
     try {
       const byCountry = await fetchWBBulk(ind.wb, active);
       apiCalls++;
+      fetched++;
       for (const code of active) {
         if (!history[code]) history[code] = {};
         const pts = byCountry[code];
@@ -155,9 +165,13 @@ async function loadLiveData(force = false) {
   online = merged > 0 || fromCache > 0;
   dot.className = 'status-dot' + (online ? '' : ' offline');
   const db = typeof WorldDB !== 'undefined' ? WorldDB.stats() : null;
-  txt.textContent = online
+  const finalMsg = online
     ? (apiCalls ? 'API: ' + apiCalls + ' chamadas · ' : 'Cache · ') + (db ? db.points + ' pontos históricos' : merged + ' séries')
-    : 'Offline — cache/embutido (precisa internet para API)';
+    : 'Offline — use Config → Atualizar quando tiver internet';
+  if (txt) txt.textContent = finalMsg;
+  if (typeof finishLoadProgress === 'function') finishLoadProgress();
+  if (typeof clearOverviewSkeleton === 'function') clearOverviewSkeleton();
+  if (typeof renderAlertBanner === 'function') renderAlertBanner();
   document.getElementById('lastUpdate').textContent = '· ' + new Date().toLocaleString('pt-BR');
   document.getElementById('histRange').textContent = histMinYear
     ? '· Histórico: ' + histMinYear + '–' + histMaxYear + ' (' + (histMaxYear - histMinYear) + ' anos)'
@@ -210,7 +224,8 @@ function setTableCat(cat) {
 function renderTable() {
   const cat = INDICATOR_CATS[currentTableCat];
   const inds = cat.ids.map(id => getInd(id)).filter(Boolean);
-  document.getElementById('tableTitle').textContent = `Tabela — ${cat.label} (${getActiveList().length} países)`;
+  const titleEl = document.getElementById('tableTitle');
+  if (titleEl) titleEl.innerHTML = '<span>' + cat.label + '</span>Tabela — ' + cat.label + ' (' + getActiveList().length + ' países)';
   const cols = inds.map(i => `<th>${i.label}</th>`).join('');
   const rows = getActiveList().map(c => {
     const d = data[c.code] || {};
@@ -482,6 +497,11 @@ function toggleCountry(code, on) {
   document.getElementById('countryCount').textContent = activeCountries.size;
   getActiveList().forEach(c => computeDerived(c.code));
   renderAll();
+  if (typeof renderAlertBanner === 'function') renderAlertBanner();
+  if (typeof renderWatchlistPanel === 'function') {
+    const cfg = document.getElementById('tab-config');
+    if (cfg?.classList.contains('active')) renderWatchlistPanel();
+  }
 }
 
 function toggleRegion(region, on) {
@@ -497,12 +517,14 @@ function toggleAllCountries(on) {
 }
 
 function applyConfig() {
-  const sec = +document.getElementById('refreshInterval').value || 120;
+  const sec = +document.getElementById('refreshInterval').value || 7200;
+  const safe = Math.max(600, Math.min(86400, sec));
   if (refreshTimer) clearInterval(refreshTimer);
-  refreshTimer = setInterval(() => loadLiveData(), sec * 1000);
+  refreshTimer = setInterval(() => loadLiveData(), safe * 1000);
 }
 
 function renderAll() {
+  if (typeof clearOverviewSkeleton === 'function') clearOverviewSkeleton();
   renderKPIs();
   renderTableCatTabs();
   renderTable();
@@ -510,25 +532,7 @@ function renderAll() {
   renderQualityTab();
 }
 
-document.querySelectorAll('nav button').forEach(btn => {
-  btn.addEventListener('click', () => {
-    document.querySelectorAll('nav button').forEach(b => b.classList.remove('active'));
-    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
-    btn.classList.add('active');
-    document.getElementById('tab-' + btn.dataset.tab).classList.add('active');
-    if (btn.dataset.tab === 'compare') { initCompareTab(); renderCompare(); }
-    if (btn.dataset.tab === 'indicators') { initHistoryTab(); renderHistoryPanel(); }
-    if (btn.dataset.tab === 'relocation') { renderRelocation(); renderFamilyProfile(); }
-    if (btn.dataset.tab === 'quality') renderQualityTab();
-    if (btn.dataset.tab === 'formulas') {
-      if (typeof buildFormulas === 'function' && !document.getElementById('fMiseryCountry')) buildFormulas();
-      if (typeof runAllFormulas === 'function') runAllFormulas();
-    }
-    if (btn.dataset.tab === 'config') renderDBStats();
-    if (btn.dataset.tab === 'guides' && typeof initGuidesTab === 'function') initGuidesTab();
-    if (btn.dataset.tab === 'planner' && typeof initPlannerTab === 'function') initPlannerTab();
-  });
-});
+/* Navegação por abas — world-ux.js (switchTab) */
 
 initData();
 mergeEmbeddedHistory(history);

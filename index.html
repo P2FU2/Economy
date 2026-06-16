@@ -3,6 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Compare indicadores econômicos de 41 países desde 1960. Histórico, simulador de expatriação, guias UE e plano Itália.">
   <title>WORLDPANEL — Painel Econômico Global</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://flagcdn.com">
@@ -28,10 +29,6 @@
     .status-dot.offline{background:var(--c-red);animation:none}
     .status-dot.loading{background:var(--c-amber);animation:pulse 1s infinite}
     @keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
-    nav{display:flex;flex-wrap:wrap;gap:.15rem;padding:.5rem 1.75rem;background:var(--bg);border-bottom:1px solid var(--border);position:sticky;top:0;z-index:100}
-    nav button{background:transparent;border:none;color:var(--muted);padding:.5rem .85rem;border-radius:var(--radius);cursor:pointer;font-size:.72rem;font-weight:500;letter-spacing:.06em;text-transform:uppercase;transition:all .2s}
-    nav button:hover{color:var(--text);background:var(--surface2)}
-    nav button.active{color:var(--text);background:var(--surface3);box-shadow:inset 0 -2px 0 var(--text)}
     main{padding:1.5rem 1.75rem;max-width:1480px;margin:0 auto}
     .tab{display:none}.tab.active{display:block}
     .grid{display:grid;gap:1.1rem}
@@ -192,6 +189,9 @@
     .hist-kpi-sub{font-size:.72rem;color:var(--dim)}
     .corr-table{font-size:.78rem}
     .corr-table th{font-size:.68rem}
+    .corr-picker{margin:.5rem 0 .65rem;max-height:200px;overflow-y:auto;padding-right:.25rem}
+    .corr-picker-toolbar{display:flex;align-items:center;gap:.65rem;flex-wrap:wrap;margin-bottom:.35rem}
+    .corr-data-meta strong{color:var(--text)}
     .corr-diag{color:var(--dim)}
     .corr-strong{color:var(--c-green);font-weight:600}
     .corr-mid{color:var(--c-blue)}
@@ -234,46 +234,146 @@
     .ministry-block li:last-child{border:none}
     .leader-photo-pending{opacity:.45}
     .leader-photo:not(.leader-photo-pending){opacity:1}
+    .skip-link{position:absolute;left:-9999px;top:auto;z-index:9999;padding:.5rem 1rem;background:var(--text);color:var(--bg)}
+    .skip-link:focus{left:1rem;top:1rem}
+    #headerProgress{position:absolute;left:0;bottom:0;height:2px;width:100%;background:transparent;opacity:0;transition:opacity .2s}
+    #headerProgress.active{opacity:1}
+    #headerProgressFill{height:100%;width:0;background:linear-gradient(90deg,var(--c-amber),var(--c-green));transition:width .25s}
+    header{position:relative}
+    .nav-toggle{display:none;background:var(--surface2);border:1px solid var(--border);color:var(--text);padding:.45rem .65rem;border-radius:var(--radius);cursor:pointer;font-size:.85rem}
+    .nav-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:89}
+    #mainNav{background:var(--bg);border-bottom:1px solid var(--border);position:sticky;top:0;z-index:100;padding:0 1.75rem}
+    .nav-inner{display:flex;flex-wrap:wrap;gap:.25rem;align-items:stretch;padding:.45rem 0}
+    .nav-group{position:relative}
+    .nav-group-btn{background:transparent;border:none;color:var(--muted);padding:.5rem .85rem;border-radius:var(--radius);cursor:pointer;font-size:.72rem;font-weight:500;letter-spacing:.06em;text-transform:uppercase;display:flex;align-items:center;gap:.35rem;transition:all .2s}
+    .nav-group-btn:hover,.nav-group.has-active .nav-group-btn{color:var(--text);background:var(--surface2)}
+    .nav-chevron{font-size:.55rem;opacity:.7}
+    .nav-dropdown{display:none;position:absolute;top:100%;left:0;min-width:180px;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);padding:.35rem;box-shadow:0 12px 32px rgba(0,0,0,.45);z-index:120}
+    .nav-group.open .nav-dropdown{display:flex;flex-direction:column;gap:.15rem}
+    .nav-tab{background:transparent;border:none;color:var(--muted);padding:.5rem .75rem;border-radius:var(--radius);cursor:pointer;font-size:.78rem;text-align:left;transition:all .15s;white-space:nowrap}
+    .nav-tab:hover{color:var(--text);background:var(--surface2)}
+    .nav-tab.active{color:var(--text);background:var(--surface3);box-shadow:inset 3px 0 0 var(--c-amber)}
+    .welcome-hero{background:linear-gradient(135deg,var(--surface) 0%,var(--surface2) 100%);border:1px solid var(--border);border-radius:var(--radius-lg);padding:1.5rem 1.75rem;margin-bottom:1.5rem;position:relative;overflow:hidden}
+    .welcome-hero.hidden{display:none}
+    .welcome-inner{display:grid;grid-template-columns:1.2fr 1fr;gap:1.5rem;align-items:start}
+    @media(max-width:900px){.welcome-inner{grid-template-columns:1fr}}
+    .welcome-eyebrow{font-size:.68rem;text-transform:uppercase;letter-spacing:.12em;color:var(--c-amber);margin-bottom:.5rem}
+    .welcome-copy h2{font-size:1.35rem;font-weight:600;line-height:1.35;margin-bottom:.65rem;letter-spacing:-.02em}
+    .welcome-desc{color:var(--muted);font-size:.9rem;max-width:52ch;margin-bottom:1rem}
+    .welcome-ctas{display:flex;flex-wrap:wrap;gap:.5rem}
+    .welcome-cards{display:flex;flex-direction:column;gap:.55rem}
+    .welcome-card{padding:.85rem 1rem;background:var(--bg);border:1px solid var(--border);border-radius:var(--radius);display:flex;flex-direction:column;gap:.2rem}
+    .welcome-card strong{font-size:.82rem;color:var(--text)}
+    .welcome-card span{font-size:.76rem;color:var(--muted)}
+    .welcome-close{position:absolute;top:.65rem;right:.75rem;background:none;border:none;color:var(--dim);font-size:1.35rem;cursor:pointer;padding:.25rem;line-height:1}
+    .welcome-close:hover{color:var(--text)}
+    .skeleton{background:linear-gradient(90deg,var(--surface2) 25%,var(--surface3) 50%,var(--surface2) 75%);background-size:200% 100%;animation:shimmer 1.2s infinite;border-radius:4px}
+    @keyframes shimmer{0%{background-position:200% 0}100%{background-position:-200% 0}}
+    .skeleton-card{min-height:88px}
+    .sk-line{height:10px;margin-bottom:.45rem}
+    .sk-lg{height:22px;margin:.5rem 0}
+    .sk-w40{width:40%}.sk-w60{width:60%}.sk-w80{width:80%}
+    .app-loading .table-wrap,.app-loading .chart-box{opacity:.55;pointer-events:none}
+    .section-head{font-size:1rem;font-weight:600;color:var(--text);margin:0 0 1rem;padding-bottom:.65rem;border-bottom:1px solid var(--border);letter-spacing:.02em}
+    .section-head span{font-size:.72rem;font-weight:500;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;display:block;margin-bottom:.2rem}
+    .profile-form{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:.65rem;margin:.85rem 0}
+    .profile-form label{display:flex;flex-direction:column;gap:.3rem;font-size:.68rem;color:var(--muted);text-transform:uppercase;letter-spacing:.04em}
+    .profile-form select,.profile-form input{width:100%}
+    .config-advanced{margin-top:.75rem;font-size:.85rem;color:var(--muted)}
+    .config-advanced summary{cursor:pointer;color:var(--text);padding:.35rem 0}
+    .chart-toolbar{display:flex;justify-content:flex-end;margin-bottom:.5rem}
+    @media(max-width:768px){
+      nav:not(#mainNav){display:none}
+      .nav-toggle{display:inline-flex;align-items:center;gap:.4rem}
+      #mainNav{position:fixed;top:0;right:0;width:min(300px,88vw);height:100vh;transform:translateX(100%);transition:transform .28s ease;padding:4rem 1rem 1.5rem;overflow-y:auto;border-left:1px solid var(--border);border-bottom:none}
+      body.nav-open #mainNav{transform:translateX(0)}
+      body.nav-open .nav-overlay{display:block}
+      .nav-inner{flex-direction:column;align-items:stretch}
+      .nav-dropdown{position:static;display:flex!important;flex-direction:column;background:transparent;border:none;box-shadow:none;padding:.25rem 0 .5rem 1rem}
+      .nav-group.open .nav-dropdown,.nav-group .nav-dropdown{display:flex!important}
+      .nav-group-btn{width:100%;justify-content:space-between}
+      main{padding:1rem}
+      header{padding:1rem}
+      #mainNav{padding:4rem 1rem 1.5rem}
+      .grid-4{grid-template-columns:repeat(2,1fr)}
+    }
+    @media(max-width:420px){.grid-4{grid-template-columns:1fr}}
+    [data-theme="light"]{
+      --bg:#f0f1f3;--surface:#fff;--surface2:#f6f7f8;--surface3:#eceef0;
+      --border:#d8dce0;--border-light:#c8ccd2;
+      --text:#1a1a1a;--muted:#5c5c5c;--dim:#8a8a8a;
+      --accent:#111;--accent-hover:#000;
+    }
+    [data-theme="light"] .welcome-hero{background:linear-gradient(135deg,#fff,#f6f7f8)}
+    [data-theme="light"] header,[data-theme="light"] #mainNav{background:var(--surface)}
+    .favorites-bar{display:flex;flex-wrap:wrap;align-items:center;gap:.4rem;padding:.5rem 0 .75rem}
+    .favorites-bar.hidden{display:none}
+    .fav-label{font-size:.68rem;text-transform:uppercase;color:var(--dim);letter-spacing:.06em}
+    .fav-chip{display:inline-flex;align-items:center;gap:.3rem;padding:.25rem .55rem;background:var(--surface2);border:1px solid var(--border);border-radius:20px;font-size:.74rem;cursor:pointer;color:var(--text)}
+    .fav-chip:hover{border-color:var(--c-amber)}
+    .fav-btn{background:none;border:1px solid var(--border);color:var(--dim);cursor:pointer;font-size:1rem;padding:.15rem .4rem;border-radius:4px;line-height:1}
+    .fav-btn.on{color:var(--c-amber);border-color:var(--c-amber)}
+    .alert-banner{background:rgba(196,92,92,.12);border:1px solid var(--c-red);border-radius:var(--radius);padding:.65rem .85rem;margin-bottom:1rem;font-size:.8rem}
+    .alert-banner.compact{padding:.45rem .75rem;margin:0 0 .75rem}
+    .alert-item{padding:.25rem 0}
+    .empty-state{text-align:center;padding:2rem 1.5rem;color:var(--muted)}
+    .empty-state .empty-icon{font-size:2rem;color:var(--dim);margin-bottom:.5rem}
+    .empty-state strong{display:block;color:var(--text);margin-bottom:.35rem;font-size:.95rem}
+    .empty-state p{font-size:.85rem;margin-bottom:1rem;max-width:36ch;margin-left:auto;margin-right:auto}
+    .ind-tip{display:inline-flex;align-items:center;justify-content:center;width:14px;height:14px;border-radius:50%;background:var(--surface3);border:1px solid var(--border);font-size:.62rem;color:var(--c-blue);cursor:help;margin-left:.2rem;vertical-align:middle;position:relative}
+    .ind-tip:hover::after,.ind-tip:focus::after{content:attr(aria-label);position:absolute;bottom:calc(100% + 6px);left:50%;transform:translateX(-50%);width:max(200px,20vw);max-width:280px;padding:.5rem .65rem;background:var(--surface3);border:1px solid var(--border-light);border-radius:var(--radius);font-size:.72rem;color:var(--text);font-weight:400;text-align:left;z-index:50;box-shadow:0 8px 24px rgba(0,0,0,.35);white-space:normal}
+    .notes-list{list-style:none;font-size:.82rem;color:var(--muted);margin-top:.5rem}
+    .notes-list li{padding:.35rem 0;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:.5rem;flex-wrap:wrap}
+    .watch-item{display:flex;align-items:center;justify-content:space-between;padding:.45rem .65rem;background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius);margin-bottom:.35rem;font-size:.8rem}
+    .cmp-split{display:none;grid-template-columns:1fr auto 1fr;gap:1rem;margin-bottom:1.25rem;align-items:stretch}
+    .split-vs{display:flex;align-items:center;justify-content:center;font-size:.78rem;color:var(--dim);font-weight:600;text-transform:uppercase}
+    .split-table{width:100%;font-size:.82rem}
+    .split-table th{color:var(--muted);font-weight:500;font-size:.72rem;text-transform:uppercase;width:45%}
+    .split-table td{font-weight:600}
+    .theme-btn{background:var(--surface2);border:1px solid var(--border);color:var(--muted);padding:.35rem .6rem;border-radius:var(--radius);cursor:pointer;font-size:.72rem}
+    .theme-btn:hover{color:var(--text);border-color:var(--border-light)}
+    #loadProgress{background:linear-gradient(90deg,var(--c-amber),var(--c-green));height:100%;width:0;transition:width .3s;border-radius:3px}
+    @media(max-width:768px){.cmp-split{grid-template-columns:1fr!important}.split-vs{padding:.25rem 0}}
   </style>
 </head>
 <body>
+<a href="#main-content" class="skip-link">Ir ao conteúdo principal</a>
 <header>
-  <h1><span>World</span>Panel</h1>
-  <div class="status-bar">
-    <div class="status-dot loading" id="statusDot"></div>
-    <span id="statusText">Iniciando...</span>
+  <div style="display:flex;align-items:center;gap:.75rem">
+    <button type="button" class="nav-toggle" id="navToggle" aria-expanded="false" aria-controls="mainNav" aria-label="Abrir menu">☰ Menu</button>
+    <h1><span>World</span>Panel</h1>
+  </div>
+  <div class="status-bar" role="status">
+    <button type="button" class="theme-btn" id="themeToggle" onclick="toggleTheme()" aria-label="Alternar tema claro/escuro">◑ Claro</button>
+    <div class="status-dot loading" id="statusDot" aria-hidden="true"></div>
+    <span id="statusText">Carregando dados econômicos…</span>
     <span id="lastUpdate"></span>
     <span id="histRange"></span>
   </div>
+  <div id="headerProgress" aria-hidden="true"><div id="headerProgressFill"></div></div>
 </header>
 
-<nav>
-  <button class="active" data-tab="overview">Visão Geral</button>
-  <button data-tab="indicators">Histórico</button>
-  <button data-tab="quality">Qualidade</button>
-  <button data-tab="relocation">Mudança</button>
-  <button data-tab="guides">Guias País</button>
-  <button data-tab="planner">Planejamento</button>
-  <button data-tab="compare">Comparar</button>
-  <button data-tab="formulas">Fórmulas</button>
-  <button data-tab="conclusions">Análise</button>
-  <button data-tab="config">Config</button>
-</nav>
+<nav id="mainNav" aria-label="Navegação principal"></nav>
+<div class="nav-overlay" id="navOverlay" aria-hidden="true"></div>
 
-<main>
-  <section id="tab-overview" class="tab active">
+<main id="main-content">
+  <div id="alertBanner" class="hidden" aria-live="polite"></div>
+  <section id="tab-overview" class="tab active" aria-label="Visão geral">
+    <div id="welcomeHero" class="welcome-hero" role="region" aria-label="Introdução"></div>
+    <div id="favoritesBar" class="favorites-bar hidden" aria-label="Países favoritos"></div>
     <div id="flagStrip" class="flag-strip"></div>
     <div class="grid grid-4" style="margin-bottom:1.25rem" id="kpiCards"></div>
     <div class="cat-tabs" id="tableCatTabs"></div>
     <div class="card" style="margin-bottom:1.25rem">
-      <h3 id="tableTitle">Tabela — Indicadores Macro</h3>
+      <h3 class="section-head" id="tableTitle"><span>Dados macro</span>Tabela — Indicadores</h3>
+      <div class="chart-toolbar" style="margin-bottom:.5rem"><button type="button" class="btn btn-sm secondary" onclick="exportMainTableCsv()">Exportar CSV</button></div>
       <div class="table-wrap" id="mainTable"></div>
     </div>
     <div class="grid grid-2">
-      <div class="card chart-card"><h3>PIB per Capita PPP</h3><div class="chart-box"><canvas id="chartGdp"></canvas></div></div>
-      <div class="card chart-card"><h3>IDH — Desenvolvimento Humano</h3><div class="chart-box"><canvas id="chartHdi"></canvas></div></div>
-      <div class="card chart-card"><h3>Índice de Felicidade</h3><div class="chart-box"><canvas id="chartHappy"></canvas></div></div>
-      <div class="card chart-card"><h3>Expectativa de Vida</h3><div class="chart-box"><canvas id="chartLife"></canvas></div></div>
+      <div class="card chart-card"><h3>PIB per Capita PPP</h3><div class="chart-box" role="img" aria-label="Gráfico PIB per capita PPP"><canvas id="chartGdp"></canvas></div><div class="chart-toolbar"><button type="button" class="btn btn-sm secondary" onclick="exportChartPng('chartGdp','pib-ppp')">PNG</button></div></div>
+      <div class="card chart-card"><h3>IDH — Desenvolvimento Humano</h3><div class="chart-box" role="img" aria-label="Gráfico IDH"><canvas id="chartHdi"></canvas></div><div class="chart-toolbar"><button type="button" class="btn btn-sm secondary" onclick="exportChartPng('chartHdi','idh')">PNG</button></div></div>
+      <div class="card chart-card"><h3>Índice de Felicidade</h3><div class="chart-box" role="img" aria-label="Gráfico felicidade"><canvas id="chartHappy"></canvas></div><div class="chart-toolbar"><button type="button" class="btn btn-sm secondary" onclick="exportChartPng('chartHappy','felicidade')">PNG</button></div></div>
+      <div class="card chart-card"><h3>Expectativa de Vida</h3><div class="chart-box" role="img" aria-label="Gráfico expectativa de vida"><canvas id="chartLife"></canvas></div><div class="chart-toolbar"><button type="button" class="btn btn-sm secondary" onclick="exportChartPng('chartLife','expectativa-vida')">PNG</button></div></div>
     </div>
   </section>
 
@@ -304,10 +404,12 @@
       <div class="card" id="indDetail"></div>
       <div class="card chart-card">
         <h3 id="histChartTitle">Histórico — série temporal</h3>
-        <div class="chart-box" style="height:380px"><canvas id="chartHistory"></canvas></div>
+        <div class="chart-toolbar"><button type="button" class="btn btn-sm secondary" onclick="exportChartPng('chartHistory','historico')">PNG</button></div>
+        <div class="chart-box" style="height:380px" role="img" aria-label="Gráfico histórico"><canvas id="chartHistory"></canvas></div>
         <div id="histLegend" style="margin-top:.5rem"></div>
       </div>
     </div>
+    <div class="card" style="margin-top:1.25rem" id="histNotes"></div>
     <div class="grid grid-2" style="margin-top:1.25rem">
       <div class="card" id="histCorrelation"></div>
       <div class="card" id="histChanges"></div>
@@ -331,11 +433,18 @@
     </div>
   </section>
 
-  <section id="tab-relocation" class="tab">
+  <section id="tab-relocation" class="tab" aria-label="Simulador de mudança">
     <div class="profile-box">
-      <h3>Simulador — Casal 30 anos · Ensino Superior · Cidadania UE · Formar família</h3>
-      <p class="muted-text" style="margin-bottom:.75rem">Ranking europeu: idioma, emprego inicial, custo de vida, saúde e qualidade para família.</p>
-      <button class="btn primary" onclick="renderFamilyProfile()">Analisar melhor país na Europa</button>
+      <h3>Simulador de expatriação — Europa</h3>
+      <p class="muted-text" id="familyProfileSummary" style="margin-bottom:.75rem">Carregando perfil…</p>
+      <div class="profile-form">
+        <label>Composição<select id="fpHousehold" onchange="saveFamilyProfileFromForm()"><option value="couple">Casal</option><option value="solo">Individual</option></select></label>
+        <label>Idade<input type="number" id="fpAge" min="18" max="70" value="30" onchange="saveFamilyProfileFromForm()"></label>
+        <label>Escolaridade<select id="fpEducation" onchange="saveFamilyProfileFromForm()"><option value="superior">Superior</option><option value="medio">Médio</option><option value="pos">Pós-graduação</option></select></label>
+        <label>Cidadania UE<select id="fpEuCitizen" onchange="saveFamilyProfileFromForm()"><option value="yes">Sim</option><option value="no">Não</option></select></label>
+        <label>Objetivo<select id="fpGoal" onchange="saveFamilyProfileFromForm()"><option value="family">Formar família</option><option value="career">Carreira</option><option value="study">Estudos</option><option value="retire">Aposentadoria</option></select></label>
+      </div>
+      <button class="btn primary" onclick="saveFamilyProfileFromForm();renderFamilyProfile()">Analisar melhor país na Europa</button>
       <div class="form-row" style="margin-top:.75rem">
         <input type="text" id="familySearch" class="country-search" placeholder="Buscar país europeu..." style="min-width:220px">
         <button class="btn secondary" onclick="focusFamilyCountry()">Ver país</button>
@@ -394,7 +503,9 @@
       <div class="card">
         <h3>Anotações livres</h3>
         <textarea id="plannerNotes" class="planner-notes" placeholder="Ideias, contatos, lembretes, links de apartamentos..." oninput="saveNotes()"></textarea>
-        <button class="btn secondary" style="margin-top:.5rem" onclick="exportPlanner()">Exportar planejamento .txt</button>
+        <button class="btn secondary" style="margin-top:.5rem" onclick="exportPlanner()">TXT</button>
+        <button class="btn secondary" style="margin-top:.5rem" onclick="exportPlannerJson()">JSON</button>
+        <button class="btn secondary" style="margin-top:.5rem" onclick="exportPlannerCsv()">CSV</button>
       </div>
     </div>
     <div class="card" style="margin-top:1.25rem">
@@ -419,14 +530,21 @@
       <div class="form-row">
         <label>Indicador</label>
         <select id="cmpIndicator" onchange="renderCompare()"></select>
+        <label>Vista</label>
+        <select id="cmpViewMode" onchange="renderCompare()">
+          <option value="chart">Gráfico</option>
+          <option value="split">Lado a lado (2 países)</option>
+        </select>
         <button class="btn primary" onclick="renderCompare()">Comparar países</button>
       </div>
       <p class="muted-text">Selecione até 6 países — mesmo indicador, gráfico unificado</p>
       <div id="cmpCountryPicker"></div>
     </div>
-    <div class="card chart-card" style="margin-bottom:1.25rem">
+    <div id="cmpSplit" class="cmp-split"></div>
+    <div class="card chart-card" id="cmpChartCard" style="margin-bottom:1.25rem">
       <h3 id="cmpChartTitle">Comparativo histórico</h3>
-      <div class="chart-box" style="height:400px"><canvas id="chartCompare"></canvas></div>
+      <div class="chart-toolbar"><button type="button" class="btn btn-sm secondary" onclick="exportChartPng('chartCompare','comparar')">PNG</button></div>
+      <div class="chart-box" style="height:400px" role="img" aria-label="Gráfico comparativo"><canvas id="chartCompare"></canvas></div>
     </div>
     <div class="card" id="cmpTable"></div>
     <div class="grid grid-4" id="cmpSnapshot" style="margin-top:1.25rem"></div>
@@ -443,25 +561,31 @@
   <section id="tab-conclusions" class="tab">
     <div class="form-row">
       <button class="btn" onclick="generateConclusions()">Gerar Análise</button>
-      <button class="btn secondary" onclick="exportReport()">Exportar .txt</button>
+      <button class="btn secondary" onclick="exportReport()">TXT</button>
+      <button class="btn secondary" onclick="exportReportCsv()">CSV</button>
     </div>
     <div id="conclusionsContent"></div>
   </section>
 
-  <section id="tab-config" class="tab">
+  <section id="tab-config" class="tab" aria-label="Configurações">
+    <div class="card" id="watchlistPanel" style="margin-bottom:1.25rem"></div>
     <div class="card" style="margin-bottom:1.25rem">
-      <h3>Atualização via API Gratuita (World Bank)</h3>
+      <h3 class="section-head"><span>API World Bank</span>Atualização de dados</h3>
       <div class="form-row">
-        <label>Refresh (seg)</label><input type="number" id="refreshInterval" value="120" min="30" max="900" style="width:80px">
-        <button class="btn" onclick="applyConfig()">Aplicar</button>
-        <button class="btn secondary" onclick="loadLiveData(true)">Atualizar agora</button>
-      </div>
-      <p style="font-size:.8rem;color:var(--muted)">Histórico: 1960–2025 · Cache local incremental (localStorage) · só busca o que falta</p>
-      <div id="dbStats" style="margin-top:.75rem"></div>
-      <div class="progress-wrap"><div id="loadProgress" style="width:0%"></div></div>
-      <div class="form-row" style="margin-top:.75rem">
+        <button class="btn primary" onclick="loadLiveData(true)">Atualizar agora</button>
         <button class="btn secondary" onclick="clearLocalDB()">Limpar cache</button>
       </div>
+      <p style="font-size:.8rem;color:var(--muted)">Histórico: 1960–2025 · Cache local incremental · atualização automática a cada 2h</p>
+      <details class="config-advanced">
+        <summary>Avançado — intervalo de refresh automático</summary>
+        <div class="form-row" style="margin-top:.5rem">
+          <label>Refresh (seg)</label><input type="number" id="refreshInterval" value="7200" min="600" max="86400" style="width:90px">
+          <button class="btn btn-sm" onclick="applyConfig()">Aplicar</button>
+          <span class="muted-text" style="font-size:.72rem">Mín. 10 min para preservar cota da API</span>
+        </div>
+      </details>
+      <div id="dbStats" style="margin-top:.75rem"></div>
+      <div class="progress-wrap"><div id="loadProgress"></div></div>
     </div>
     <div class="card">
       <h3>Países Ativos (<span id="countryCount"></span>)</h3>
@@ -487,5 +611,8 @@
 <script src="world-app.js"></script>
 <script src="world-history.js"></script>
 <script src="world-compare.js"></script>
+<script src="world-ux.js"></script>
+<script src="world-prefs.js"></script>
+<script>if (typeof initUX === 'function') initUX();</script>
 </body>
 </html>

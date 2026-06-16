@@ -57,7 +57,24 @@ function renderCompare() {
   const indId = document.getElementById('cmpIndicator').value;
   const ind = getInd(indId);
   const codes = [...cmpSelected].filter(c => getCountry(c));
-  if (!ind || !codes.length) return;
+  const viewMode = document.getElementById('cmpViewMode')?.value || 'chart';
+  if (!ind || !codes.length) {
+    const el = document.getElementById('cmpTable');
+    if (el) el.innerHTML = typeof emptyStateHtml === 'function'
+      ? emptyStateHtml('Selecione países', 'Marque até 6 países acima para comparar o mesmo indicador.', null, null) : '';
+    return;
+  }
+
+  const splitEl = document.getElementById('cmpSplit');
+  const chartCard = document.getElementById('cmpChartCard');
+  if (viewMode === 'split' && codes.length === 2 && splitEl) {
+    if (chartCard) chartCard.style.display = 'none';
+    splitEl.style.display = 'grid';
+    renderCompareSplit(codes[0], codes[1], indId, ind);
+  } else {
+    if (chartCard) chartCard.style.display = '';
+    if (splitEl) splitEl.style.display = 'none';
+  }
 
   const titleEl = document.getElementById('cmpChartTitle');
   if (titleEl) titleEl.textContent = ind.label + ' — ' + codes.length + ' países';
@@ -127,7 +144,12 @@ function renderCompare() {
   });
   tableHtml += '</tbody></table></div>';
   const tbl = document.getElementById('cmpTable');
-  if (tbl) tbl.innerHTML = '<h3 style="margin-bottom:.75rem;font-size:.72rem;text-transform:uppercase;letter-spacing:.1em;color:var(--muted)">Resumo comparativo</h3>' + tableHtml;
+  if (tbl) {
+    let toolbar = '<div class="chart-toolbar"><button type="button" class="btn btn-sm secondary" onclick="exportChartPng(\'chartCompare\',\'comparar\')">PNG</button>';
+    toolbar += '<button type="button" class="btn btn-sm secondary" onclick="exportCmpTableCsv()">CSV</button></div>';
+    tbl.innerHTML = toolbar + '<h3 style="margin-bottom:.75rem;font-size:.72rem;text-transform:uppercase;letter-spacing:.1em;color:var(--muted)">Resumo comparativo' +
+      (typeof indTipHtml === 'function' ? indTipHtml(indId) : '') + '</h3>' + tableHtml;
+  }
 
   const snap = document.getElementById('cmpSnapshot');
   if (snap) {
@@ -137,4 +159,33 @@ function renderCompare() {
         '<div><h3 style="font-size:.9rem">' + c.name + '</h3><span class="kpi" style="font-size:1.2rem">' + ind.fmt(data[code]?.[indId]) + '</span></div></div></div>';
     }).join('');
   }
+}
+
+function renderCompareSplit(codeA, codeB, indId, ind) {
+  const el = document.getElementById('cmpSplit');
+  if (!el) return;
+  const ca = getCountry(codeA), cb = getCountry(codeB);
+  const da = data[codeA] || {}, db = data[codeB] || {};
+  const ha = getHistSeries(codeA, indId), hb = getHistSeries(codeB, indId);
+  const metrics = [
+    { label: 'Valor atual', a: ind.fmt(da[indId]), b: ind.fmt(db[indId]) },
+    { label: 'Período', a: ha.length ? ha[0].year + '–' + ha[ha.length - 1].year : '—', b: hb.length ? hb[0].year + '–' + hb[hb.length - 1].year : '—' },
+    { label: 'IDH', a: fmtNum(da.hdi, 3), b: fmtNum(db.hdi, 3) },
+    { label: 'Felicidade', a: fmtNum(da.happiness, 2), b: fmtNum(db.happiness, 2) },
+    { label: 'Custo vida', a: fmtNum(da.cost_living, 0), b: fmtNum(db.cost_living, 0) },
+    { label: 'Desemprego', a: fmtNum(da.unemployment) + '%', b: fmtNum(db.unemployment) + '%' }
+  ];
+  let html = '<div class="split-col card"><div class="compare-header">' + flagImg(codeA, 'lg') + '<h3>' + ca.name + '</h3></div><table class="split-table">';
+  metrics.forEach(m => { html += '<tr><th>' + m.label + '</th><td><strong>' + m.a + '</strong></td></tr>'; });
+  html += '</table></div>';
+  html += '<div class="split-vs" aria-hidden="true">vs</div>';
+  html += '<div class="split-col card"><div class="compare-header">' + flagImg(codeB, 'lg') + '<h3>' + cb.name + '</h3></div><table class="split-table">';
+  metrics.forEach(m => { html += '<tr><th>' + m.label + '</th><td><strong>' + m.b + '</strong></td></tr>'; });
+  html += '</table></div>';
+  el.innerHTML = html;
+}
+
+function exportCmpTableCsv() {
+  const table = document.getElementById('cmpTable')?.querySelector('table');
+  if (table && typeof exportTableCsv === 'function') exportTableCsv(table, 'comparar.csv');
 }

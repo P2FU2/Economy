@@ -57,7 +57,9 @@ Economy/
 ├── world-planner.js    # Anotações e tarefas de planejamento
 ├── world-leaders.js    # Governantes, ministros, eventos históricos e fotos Wikipedia
 ├── world-history.js    # Gráficos históricos, correlação e painel de governantes
-├── world-compare.js    # Comparativo multi-país
+├── world-compare.js    # Comparativo multi-país + vista lado a lado
+├── world-ux.js         # Navegação, hero, deep linking, loading
+├── world-prefs.js      # Favoritos, watchlist, anotações, tema, exportações
 └── assets/
     ├── cities/         # Fotos das cidades italianas (plano Itália)
     └── leaders/        # Fotos locais de governantes (fallback offline)
@@ -67,7 +69,7 @@ Economy/
 
 Os arquivos JS devem ser carregados nesta ordem (já configurada no `index.html`):
 
-`world-data.js` → `world-db.js` → `world-formulas.js` → `world-guides.js` → `world-planner.js` → `world-leaders.js` → `world-app.js` → `world-history.js` → `world-compare.js`
+`world-data.js` → `world-db.js` → `world-formulas.js` → `world-guides.js` → `world-planner.js` → `world-leaders.js` → `world-app.js` → `world-history.js` → `world-compare.js` → `world-ux.js` → `world-prefs.js` → `initUX()`
 
 ---
 
@@ -133,9 +135,32 @@ Para limpar o cache: aba **Config** → botão de limpar, ou apague os dados do 
 - [Chart.js 4.4](https://www.chartjs.org/) — gráficos
 - [Google Fonts — Inter](https://fonts.google.com/) — tipografia
 
----
+## Melhorias UX (v2)
 
-## Países cobertos
+- **Hero de boas-vindas** com CTA e cards de destaque (dispensável)
+- **Navegação em 4 grupos**: Explorar · Países · Ferramentas · Sistema
+- **Menu mobile** (hamburger + drawer)
+- **Deep linking**: `?tab=indicators&country=ITA`
+- **Simulador com perfil editável** (composição, idade, UE, objetivo)
+- **Skeleton loaders** e barra de progresso no carregamento
+- **Exportar** gráficos PNG · tabelas CSV · planejamento JSON/CSV
+- **Tema claro/escuro** (botão no header)
+- **Favoritos** e **watchlist** com alertas de threshold
+- **Anotações por ano** no histórico (aparecem no gráfico)
+- **Comparar lado a lado** (2 países)
+- **Tooltips** nos indicadores (?)
+- **Links para fórmulas** relacionadas no histórico
+- **Estados vazios** ilustrativos
+- **Acessibilidade**: skip link, `aria-live`, `aria-current`, labels em gráficos
+
+### Arquivos
+
+| Arquivo | Função |
+|---------|--------|
+| `world-ux.js` | Navegação, hero, deep linking, loading |
+| `world-prefs.js` | Favoritos, watchlist, anotações, tema, exportações |
+
+---
 
 41 países em 5 regiões: Américas, Europa, Ásia, África e Oceania — incluindo Brasil, Portugal, Itália, Espanha, Alemanha, França, EUA, Argentina e China.
 

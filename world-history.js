@@ -2,7 +2,9 @@
 
 const HIST_CHART_COLORS = ['#5b8fd4', '#3d9a6a', '#c9a227', '#c45c5c', '#9b7ec8', '#4db8a4', '#e07b53', '#8a8a8a'];
 const HIST_MAX_IND = 8;
+const CORR_MAX_IND = 6;
 let histSelected = new Set(['gdp_pc_ppp', 'inflation', 'unemployment']);
+let corrSelected = new Set(['gdp_pc_ppp', 'inflation', 'unemployment']);
 
 const HIST_WB_INDICATORS = INDICATORS.filter(i => i.wb);
 
@@ -11,19 +13,7 @@ function initHistoryTab() {
   if (!picker || picker.dataset.ready) return;
   picker.dataset.ready = '1';
   initCountrySearch('indSearch', 'indCountry', renderHistoryPanel);
-  let html = '';
-  Object.entries(INDICATOR_CATS).forEach(([catId, cat]) => {
-    const ids = cat.ids.filter(id => HIST_WB_INDICATORS.some(i => i.id === id));
-    if (!ids.length) return;
-    html += '<div class="hist-cat"><span class="hist-cat-label">' + cat.label + '</span><div class="hist-chips">';
-    ids.forEach(id => {
-      const ind = getInd(id);
-      const on = histSelected.has(id);
-      html += '<label class="hist-chip' + (on ? ' on' : '') + '"><input type="checkbox" value="' + id + '"' + (on ? ' checked' : '') + ' onchange="toggleHistInd(this)"><span>' + ind.label + '</span></label>';
-    });
-    html += '</div></div>';
-  });
-  picker.innerHTML = html;
+  picker.innerHTML = buildIndPickerHtml(histSelected, HIST_MAX_IND, 'toggleHistInd');
   updateHistIndCount();
 }
 
@@ -59,6 +49,61 @@ function getHistSelected() {
   return [...histSelected].filter(id => getInd(id));
 }
 
+function getCorrSelected() {
+  return [...corrSelected].filter(id => getInd(id));
+}
+
+function buildIndPickerHtml(selectedSet, maxInd, toggleFn) {
+  let html = '';
+  Object.entries(INDICATOR_CATS).forEach(([catId, cat]) => {
+    const ids = cat.ids.filter(id => HIST_WB_INDICATORS.some(i => i.id === id));
+    if (!ids.length) return;
+    html += '<div class="hist-cat"><span class="hist-cat-label">' + cat.label + '</span><div class="hist-chips">';
+    ids.forEach(id => {
+      const ind = getInd(id);
+      const on = selectedSet.has(id);
+      html += '<label class="hist-chip' + (on ? ' on' : '') + '"><input type="checkbox" value="' + id + '"' + (on ? ' checked' : '') + ' onchange="' + toggleFn + '(this)"><span>' + ind.label + (typeof indTipHtml === 'function' ? indTipHtml(id) : '') + '</span></label>';
+    });
+    html += '</div></div>';
+  });
+  return html;
+}
+
+function toggleCorrInd(cb) {
+  const id = cb.value;
+  if (cb.checked) {
+    if (corrSelected.size >= CORR_MAX_IND) {
+      cb.checked = false;
+      alert('Máximo de ' + CORR_MAX_IND + ' indicadores na matriz. Desmarque um antes de adicionar.');
+      return;
+    }
+    corrSelected.add(id);
+    cb.parentElement.classList.add('on');
+  } else {
+    corrSelected.delete(id);
+    cb.parentElement.classList.remove('on');
+  }
+  if (!corrSelected.size) {
+    corrSelected.add('gdp_pc_ppp');
+    corrSelected.add('inflation');
+    const box = document.getElementById('corrIndPicker');
+    if (box) {
+      box.querySelectorAll('input').forEach(inp => {
+        const on = corrSelected.has(inp.value);
+        inp.checked = on;
+        inp.parentElement.classList.toggle('on', on);
+      });
+    }
+  }
+  renderCorrelationPanel(document.getElementById('indCountry')?.value);
+}
+
+function syncCorrFromHist() {
+  corrSelected = new Set([...histSelected].slice(0, CORR_MAX_IND));
+  if (!corrSelected.size) corrSelected = new Set(['gdp_pc_ppp', 'inflation', 'unemployment']);
+  renderHistoryPanel();
+}
+
 function alignHistSeries(code, indIds) {
   const yearSet = new Set();
   indIds.forEach(id => {
@@ -89,12 +134,39 @@ function pearson(xs, ys) {
 function pairedValues(code, idA, idB) {
   const mapA = Object.fromEntries(getHistSeries(code, idA).map(p => [p.year, p.value]));
   const mapB = Object.fromEntries(getHistSeries(code, idB).map(p => [p.year, p.value]));
-  const years = Object.keys(mapA).filter(y => mapB[y] != null).map(Number).sort((a, b) => a - b);
+  const years = Object.keys(mapA)
+    .filter(y => {
+      const a = mapA[y], b = mapB[y];
+      return b != null && a != null && !isNaN(a) && !isNaN(b);
+    })
+    .map(Number)
+    .sort((a, b) => a - b);
   return {
     years,
     a: years.map(y => mapA[y]),
     b: years.map(y => mapB[y])
   };
+}
+
+function corrOverlapMeta(code, indIds) {
+  if (indIds.length < 2) return { years: 0, min: null, max: null };
+  let min = null, max = null, minCount = Infinity;
+  for (let i = 0; i < indIds.length; i++) {
+    for (let j = i + 1; j < indIds.length; j++) {
+      const pair = pairedValues(code, indIds[i], indIds[j]);
+      if (pair.years.length && pair.years.length < minCount) {
+        minCount = pair.years.length;
+        min = pair.years[0];
+        max = pair.years[pair.years.length - 1];
+      }
+    }
+  }
+  if (minCount === Infinity) {
+    const one = getHistSeries(code, indIds[0]);
+    if (one.length) return { years: one.length, min: one[0].year, max: one[one.length - 1].year };
+    return { years: 0, min: null, max: null };
+  }
+  return { years: minCount, min, max };
 }
 
 function normalizeSeries(values) {
@@ -134,7 +206,7 @@ function analyzeIndicatorChanges(code, indId) {
       improved, cause, events, leader
     });
   }
-  return results.sort((a, b) => Math.abs(b.pct) - Math.abs(a.pct)).slice(0, 12);
+  return results;
 }
 
 function eventYearsForChart(code, indIds, years) {
@@ -156,16 +228,29 @@ function renderHistoryPanel() {
   if (!c || !indIds.length) return;
 
   const hasAnyHist = indIds.some(id => getHistSeries(code, id).length > 1);
-  let infoTxt = hasAnyHist
-    ? indIds.length + ' indicador(es) · passe o mouse nos pontos destacados para ver eventos'
-    : 'Carregue dados via Config → Atualizar agora. Indicadores embutidos (IDH, felicidade) não têm série API.';
+  if (!hasAnyHist) {
+    document.getElementById('histInfo').innerHTML = '';
+    document.getElementById('indDetail').innerHTML = typeof emptyStateHtml === 'function'
+      ? emptyStateHtml('Sem dados históricos', 'Selecione outro país ou vá em Config → Atualizar agora para buscar séries da API World Bank.', 'Atualizar dados', 'config')
+      : '<p class="muted-text">Sem dados — atualize em Config.</p>';
+    document.getElementById('chartHistory')?.getContext?.('2d');
+    if (charts.history) { charts.history.destroy(); charts.history = null; }
+    document.getElementById('histLegend').innerHTML = '';
+    renderCorrelationPanel(code);
+    document.getElementById('histChanges').innerHTML = typeof emptyStateHtml === 'function'
+      ? emptyStateHtml('Aguardando dados', 'As mudanças significativas aparecem quando houver série histórica com 2+ anos.', null, null) : '';
+    renderLeadersPanel(code);
+    if (typeof renderChartNotesPanel === 'function') renderChartNotesPanel(code);
+    return;
+  }
+  let infoTxt = indIds.length + ' indicador(es) · passe o mouse nos pontos destacados para ver eventos e anotações';
   if (indIds.includes('literacy')) {
     const lit = getHistSeries(code, 'literacy');
     if (lit.length >= 4) infoTxt += ' · Alfabetização: série UNESCO 1970–2018 (censos a cada ~10 anos)';
   }
   document.getElementById('histInfo').textContent = infoTxt;
 
-  let detailHtml = '<div class="compare-header">' + flagImg(code, 'lg') + '<h3>' + c.name + '</h3></div>';
+  let detailHtml = '<div class="compare-header">' + flagImg(code, 'lg') + '<h3>' + c.name + '</h3>' + (typeof favoriteBtnHtml === 'function' ? favoriteBtnHtml(code) : '') + '</div>';
   detailHtml += '<div class="hist-kpi-grid">';
   indIds.forEach((id, i) => {
     const ind = getInd(id);
@@ -173,7 +258,7 @@ function renderHistoryPanel() {
     const hist = getHistSeries(code, id);
     const pts = hist?.length || 0;
     detailHtml += '<div class="hist-kpi-item" style="border-left:3px solid ' + HIST_CHART_COLORS[i % HIST_CHART_COLORS.length] + '">';
-    detailHtml += '<span class="hist-kpi-label">' + ind.label + '</span>';
+    detailHtml += '<span class="hist-kpi-label">' + ind.label + (typeof indTipHtml === 'function' ? indTipHtml(id) : '') + (typeof formulaLinkForInd === 'function' ? formulaLinkForInd(id) : '') + '</span>';
     detailHtml += '<span class="hist-kpi-val">' + ind.fmt(val) + '</span>';
     detailHtml += '<span class="hist-kpi-sub">' + (pts > 1 ? pts + ' pts (' + hist[0].year + '–' + hist[hist.length - 1].year + ')' : 'valor atual') + '</span></div>';
   });
@@ -181,9 +266,11 @@ function renderHistoryPanel() {
   document.getElementById('indDetail').innerHTML = detailHtml;
 
   renderHistoryChart(code, indIds, mode);
-  renderCorrelationPanel(code, indIds);
+  renderCorrelationPanel(code);
   renderChangesPanel(code, indIds);
   renderLeadersPanel(code);
+  if (typeof renderChartNotesPanel === 'function') renderChartNotesPanel(code);
+  if (typeof updateURLState === 'function') updateURLState();
 }
 
 function renderHistoryChart(code, indIds, mode) {
@@ -255,6 +342,10 @@ function renderHistoryChart(code, indIds, mode) {
   }
 
   const eventYears = eventYearsForChart(code, indIds, years);
+  const noteYears = new Set();
+  if (typeof ChartNotes !== 'undefined') {
+    ChartNotes.forCountry(code).forEach(n => { if (years.includes(n.year)) noteYears.add(n.year); });
+  }
   const datasets = indIds.map((id, i) => {
     let vals = series[i];
     if (mode === 'normalized') vals = normalizeSeries(vals);
@@ -268,8 +359,8 @@ function renderHistoryChart(code, indIds, mode) {
       tension: 0.2,
       spanGaps: true,
       borderWidth: 2,
-      pointRadius: years.map(y => eventYears.has(y) ? 7 : (years.length > 50 ? 0 : 3)),
-      pointBackgroundColor: years.map(y => eventYears.has(y) ? '#c9a227' : HIST_CHART_COLORS[i % HIST_CHART_COLORS.length]),
+      pointRadius: years.map(y => (eventYears.has(y) || noteYears.has(y)) ? 7 : (years.length > 50 ? 0 : 3)),
+      pointBackgroundColor: years.map(y => noteYears.has(y) ? '#9b7ec8' : (eventYears.has(y) ? '#c9a227' : HIST_CHART_COLORS[i % HIST_CHART_COLORS.length])),
       pointBorderColor: years.map(y => eventYears.has(y) ? '#ececec' : HIST_CHART_COLORS[i % HIST_CHART_COLORS.length]),
       pointHoverRadius: 8
     };
@@ -291,8 +382,10 @@ function renderHistoryChart(code, indIds, mode) {
               const year = +items[0].label;
               const ev = getEventsForYear(code, year);
               const leader = getLeaderAtYear(code, year);
+              const note = typeof ChartNotes !== 'undefined' ? ChartNotes.get(code, year) : '';
               const lines = [];
               if (leader) lines.push('Governante: ' + leader.name);
+              if (note) lines.push('📝 ' + note);
               ev.forEach(e => lines.push('▸ ' + e.title));
               return lines;
             }
@@ -305,17 +398,41 @@ function renderHistoryChart(code, indIds, mode) {
       }
     }
   });
-  document.getElementById('histLegend').innerHTML = '<p class="muted-text">Pontos <span style="color:var(--c-amber)">●</span> dourados = anos com eventos políticos/econômicos registrados</p>';
+  document.getElementById('histLegend').innerHTML = '<p class="muted-text">Pontos <span style="color:var(--c-amber)">●</span> dourados = eventos · <span style="color:var(--c-purple)">●</span> roxos = suas anotações</p>';
 }
 
-function renderCorrelationPanel(code, indIds) {
+function renderCorrelationPanel(code) {
   const el = document.getElementById('histCorrelation');
   if (!el) return;
+  const indIds = getCorrSelected();
+  let html = '<h3>Matriz de correlação (Pearson)</h3>';
+  html += '<p class="muted-text" style="margin-bottom:.5rem">Selecione os indicadores da matriz (independente do gráfico). Máx. ' + CORR_MAX_IND + '.</p>';
+  html += '<div class="corr-picker-toolbar"><button type="button" class="btn btn-sm secondary" onclick="syncCorrFromHist()">Usar mesmos do gráfico</button>';
+  html += '<span class="muted-text" style="font-size:.72rem">' + indIds.length + ' selecionado(s)</span></div>';
+  html += '<div id="corrIndPicker" class="hist-picker corr-picker">' + buildIndPickerHtml(corrSelected, CORR_MAX_IND, 'toggleCorrInd') + '</div>';
+
   if (indIds.length < 2) {
-    el.innerHTML = '<h3>Matriz de correlação</h3><p class="muted-text">Selecione 2 ou mais indicadores.</p>';
+    html += '<p class="muted-text" style="margin-top:.75rem">Selecione 2 ou mais indicadores para calcular a matriz.</p>';
+    el.innerHTML = html;
     return;
   }
-  let html = '<h3>Matriz de correlação (Pearson)</h3><div class="table-wrap"><table class="corr-table"><thead><tr><th></th>';
+
+  const overlap = corrOverlapMeta(code, indIds);
+  const dbStats = typeof WorldDB !== 'undefined' ? WorldDB.stats() : null;
+  const stale = typeof WorldDB !== 'undefined' && WorldDB.isStale();
+  let dataLine = '';
+  if (overlap.min != null) {
+    dataLine = 'Período em comum: <strong>' + overlap.min + '–' + overlap.max + '</strong> · ' + overlap.years + ' anos';
+  } else {
+    dataLine = 'Dados insuficientes — vá em <strong>Config → Atualizar agora</strong>';
+  }
+  if (dbStats?.savedAt) {
+    dataLine += ' · Cache: ' + new Date(dbStats.savedAt).toLocaleString('pt-BR');
+    if (stale) dataLine += ' <span class="tag down" style="margin-left:.25rem">desatualizado</span>';
+  }
+  html += '<p class="muted-text corr-data-meta" style="margin-top:.65rem">' + dataLine + '</p>';
+
+  html += '<div class="table-wrap"><table class="corr-table"><thead><tr><th></th>';
   indIds.forEach(id => html += '<th>' + getInd(id).label.split(' ').slice(0, 2).join(' ') + '</th>');
   html += '</tr></thead><tbody>';
   indIds.forEach((idA, i) => {
@@ -327,15 +444,14 @@ function renderCorrelationPanel(code, indIds) {
         const pair = pairedValues(code, idA, idB);
         const r = pearson(pair.a, pair.b);
         const cls = r == null ? '' : Math.abs(r) > 0.7 ? 'corr-strong' : Math.abs(r) > 0.4 ? 'corr-mid' : 'corr-weak';
-        html += '<td class="' + cls + '">' + (r != null ? fmtNum(r, 2) : '—') + '</td>';
+        const title = pair.years.length ? pair.years[0] + '–' + pair.years[pair.years.length - 1] + ' (' + pair.years.length + 'a)' : '';
+        html += '<td class="' + cls + '"' + (title ? ' title="' + title + '"' : '') + '>' + (r != null ? fmtNum(r, 2) : '—') + '</td>';
       }
     });
     html += '</tr>';
   });
   html += '</tbody></table></div>';
-  if (indIds.length >= 2) {
-    html += '<p class="muted-text" style="margin-top:.5rem">Modo <strong>Correlação</strong> + 2 indicadores: gráfico de dispersão. Verde/forte |&gt;0,7| · Azul moderado · Cinza fraco.</p>';
-  }
+  html += '<p class="muted-text" style="margin-top:.5rem">Modo <strong>Correlação</strong> no gráfico usa os indicadores do filtro superior. Verde/forte |&gt;0,7| · Azul moderado · Cinza fraco. Passe o mouse nas células para ver o período.</p>';
   el.innerHTML = html;
 }
 
@@ -344,7 +460,9 @@ function renderChangesPanel(code, indIds) {
   if (!el) return;
   let all = [];
   indIds.forEach(id => all.push(...analyzeIndicatorChanges(code, id)));
-  all = all.sort((a, b) => Math.abs(b.pct) - Math.abs(a.pct)).slice(0, 15);
+  all = all
+    .sort((a, b) => b.year - a.year || Math.abs(b.pct) - Math.abs(a.pct))
+    .slice(0, 20);
   if (!all.length) {
     el.innerHTML = '<h3>Mudanças significativas por ano</h3><p class="muted-text">Sem variações relevantes ou dados insuficientes.</p>';
     return;
@@ -371,7 +489,7 @@ function renderLeadersPanel(code) {
     return;
   }
   let html = '<div class="leader-timeline">';
-  list.forEach((l, i) => {
+  [...list].sort((a, b) => b.to - a.to || b.from - a.from).forEach((l, i) => {
     const ex = getLeaderExtra(code, l.name);
     const measures = (ex && ex.measures) ? ex.measures.concat(l.measures) : l.measures;
     const consequences = (ex && ex.consequences) ? ex.consequences.concat(l.consequences) : l.consequences;

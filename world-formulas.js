@@ -250,7 +250,7 @@ const FORMULA_HTML = {
       [{ url: 'https://hdr.undp.org/data-center/documentation', label: 'PNUD — IDH (PDF)' }, { url: 'https://worldhappiness.report/ed/2024/', label: 'World Happiness 2024' }]
     );
     return '<div class="card formula-card"><h4>14. Score Família UE</h4>' + ex +
-      '<button class="btn" onclick="renderFamilyProfile();document.querySelector(\'[data-tab=relocation]\').click()">Ver ranking Europa</button>' +
+      '<button class="btn" onclick="renderFamilyProfile();switchTab(\'relocation\')">Ver ranking Europa</button>' +
       '<div class="formula-result" id="resFamilyEU">Clique para calcular na aba Mudança</div></div>';
   })()
 };
@@ -486,18 +486,30 @@ function calcGiniInterp() {
     Pobreza extrema: ${fmtNum(data[code]?.poverty)}% · IDH: ${fmtNum(data[code]?.hdi, 3)}`;
 }
 
-function calcFamilyEUScore(code) {
+function calcFamilyEUScore(code, profile) {
+  profile = profile || (typeof getFamilyProfile === 'function' ? getFamilyProfile() : null);
   const d = data[code] || {};
   const lang = LANG_EASE[code] || 30;
   const jobEase = 100 - (JOB_ENTRY[code] || 50);
   const costScore = Math.max(0, 100 - (d.cost_living || 50));
   const unempScore = Math.max(0, 100 - (d.unemployment || 5) * 8);
-  return Math.round(
-    lang * 0.22 + jobEase * 0.18 + costScore * 0.15 +
-    (d.healthcare || 50) * 0.12 + unempScore * 0.10 +
-    (d.safety || 50) * 0.08 + (d.hdi || 0.5) * 100 * 0.08 +
-    (d.happiness || 5) * 10 * 0.07
-  );
+  let w = { lang: 0.22, job: 0.18, cost: 0.15, health: 0.12, unemp: 0.10, safety: 0.08, hdi: 0.08, happy: 0.07 };
+  if (profile) {
+    if (profile.goal === 'career') { w.job += 0.08; w.lang -= 0.03; w.cost -= 0.03; }
+    if (profile.goal === 'family') { w.health += 0.05; w.cost += 0.03; w.happy += 0.03; w.job -= 0.04; }
+    if (profile.goal === 'study') { w.lang += 0.06; w.cost += 0.04; w.job -= 0.05; }
+    if (profile && profile.goal === 'retire') { w.cost += 0.08; w.health += 0.05; w.safety += 0.04; w.job -= 0.10; }
+    if (profile.household === 'solo') { w.cost += 0.05; w.job += 0.03; }
+    if (!profile.euCitizen) { w.job -= 0.06; w.lang += 0.04; }
+    if (profile.education === 'pos') { w.job += 0.04; }
+  }
+  let score = lang * w.lang + jobEase * w.job + costScore * w.cost +
+    (d.healthcare || 50) * w.health + unempScore * w.unemp +
+    (d.safety || 50) * w.safety + (d.hdi || 0.5) * 100 * w.hdi +
+    (d.happiness || 5) * 10 * w.happy;
+  if (profile && !profile.euCitizen && ['DEU', 'AUT', 'FRA', 'NLD'].includes(code)) score -= 8;
+  if (profile && profile.euCitizen && code === 'PRT') score += 4;
+  return Math.round(Math.max(0, Math.min(100, score)));
 }
 
 function familyTopText(top, reserve) {
@@ -510,9 +522,10 @@ function familyTopText(top, reserve) {
 }
 
 function renderFamilyProfile() {
+  const profile = typeof getFamilyProfile === 'function' ? getFamilyProfile() : null;
   const europe = COUNTRIES.filter(c => c.region === 'europe' && c.code !== 'RUS' && c.code !== 'GBR');
   const ranked = europe.map(c => {
-    const score = calcFamilyEUScore(c.code);
+    const score = calcFamilyEUScore(c.code, profile);
     const d = data[c.code] || {};
     return { c, score, d, lang: LANG_EASE[c.code], job: JOB_ENTRY[c.code], eng: ENGLISH_JOBS[c.code] || ENGLISH_JOBS.default };
   }).sort((a, b) => b.score - a.score);
@@ -540,7 +553,7 @@ function renderFamilyProfile() {
     html += ' · Italiano aprendível em poucos meses para falantes de português. SNS universal. Bolsa família/Incentivi demografici para natalidade. Norte: emprego industrial/tech; Sul: custo menor.</p></div>';
   }
 
-  html += '<div class="card" style="margin-top:1rem"><h3>Ranking completo — Europa (seu perfil)</h3><div class="table-wrap"><table><thead><tr>';
+  html += '<div class="card" style="margin-top:1rem"><h3>Ranking completo — Europa <span style="font-weight:400;color:var(--muted);font-size:.78rem">(' + (typeof familyProfileLabel === 'function' ? familyProfileLabel(profile) : 'seu perfil') + ')</span></h3><div class="table-wrap"><table><thead><tr>';
   html += '<th>#</th><th>País</th><th>Score</th><th>Idioma</th><th>Emprego</th><th>Inglês</th><th>Custo</th><th>Aluguel</th><th>Saúde</th><th>IDH</th><th>Reserva 9m</th></tr></thead><tbody>';
   ranked.forEach((x, i) => {
     html += '<tr data-family-code="' + x.c.code + '" id="family-row-' + x.c.code + '"><td>' + (i+1) + '</td><td>' + countryCell(x.c.code, 'sm', true) + '</td><td><strong>' + x.score + '</strong></td>';
@@ -584,7 +597,7 @@ function focusFamilyCountryByCode(code) {
   }
   const c = getCountry(code);
   const d = data[code] || {};
-  const score = calcFamilyEUScore(code);
+  const score = calcFamilyEUScore(code, typeof getFamilyProfile === 'function' ? getFamilyProfile() : null);
   const banner = document.getElementById('familyCountryFocus');
   if (banner && c) {
     banner.innerHTML = '<div class="card" style="margin-top:1rem;border-left:3px solid var(--c-amber)">' +

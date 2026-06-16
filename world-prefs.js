@@ -40,7 +40,7 @@ const UserPrefs = {
       const raw = localStorage.getItem(PREFS_KEY);
       return raw ? JSON.parse(raw) : { favorites: [], watchlist: [], theme: 'dark', defaultTab: 'overview' };
     } catch (e) {
-      return { favorites: [], watchlist: [], theme: 'dark', defaultTab: 'overview' };
+      return { favorites: [], watchlist: [], theme: 'dark', defaultTab: 'overview', lastCountry: 'BRA', histIndicators: null, histMode: 'multi', tableCat: 'macro', lastTab: 'overview' };
     }
   },
   save(p) {
@@ -356,4 +356,34 @@ function initUXExtended() {
   initTheme();
   renderFavoritesBar();
   renderAlertBanner();
+  restoreSessionState();
+}
+
+function saveSessionState() {
+  const p = UserPrefs.load();
+  const country = document.getElementById('indCountry')?.value;
+  if (country) p.lastCountry = country;
+  const mode = document.getElementById('histChartMode')?.value;
+  if (mode) p.histMode = mode;
+  if (typeof getHistSelected === 'function') {
+    const ids = getHistSelected();
+    if (ids.length) p.histIndicators = ids;
+  }
+  if (typeof currentTableCat !== 'undefined') p.tableCat = currentTableCat;
+  if (typeof activeTab !== 'undefined') p.lastTab = activeTab;
+  UserPrefs.save(p);
+}
+
+function restoreSessionState() {
+  if (new URLSearchParams(location.search).get('tab')) return;
+  const p = UserPrefs.load();
+  if (p.tableCat && typeof setTableCat === 'function') setTableCat(p.tableCat);
+  if (p.histMode && document.getElementById('histChartMode')) document.getElementById('histChartMode').value = p.histMode;
+  if (p.histIndicators && typeof setHistFromURL === 'function') setHistFromURL(p.histIndicators, p.histMode);
+  const code = p.lastCountry || 'BRA';
+  const sel = document.getElementById('indCountry');
+  const search = document.getElementById('indSearch');
+  const c = getCountry(code);
+  if (sel && c) sel.value = c.code;
+  if (search && c) search.value = c.name;
 }

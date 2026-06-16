@@ -1,12 +1,18 @@
 /* WORLDPANEL — Histórico multi-indicador, correlação e análise */
 
-const HIST_CHART_COLORS = ['#5b8fd4', '#3d9a6a', '#c9a227', '#c45c5c', '#9b7ec8', '#4db8a4', '#e07b53', '#8a8a8a'];
+const HIST_CHART_COLORS = typeof CHART_PALETTE !== 'undefined' ? CHART_PALETTE : ['#5b8fd4', '#3d9a6a', '#c9a227', '#c45c5c', '#9b7ec8', '#4db8a4', '#e07b53', '#8a8a8a'];
+const HIST_LINE_DASHES = typeof CHART_LINE_DASHES !== 'undefined' ? CHART_LINE_DASHES : [[], [6, 4], [2, 3], [8, 4, 2, 4], [4, 4], [10, 5, 2, 5], [2, 6], [6, 6]];
 const HIST_MAX_IND = 8;
 const CORR_MAX_IND = 6;
 let histSelected = new Set(['gdp_pc_ppp', 'inflation', 'unemployment']);
 let corrSelected = new Set(['gdp_pc_ppp', 'inflation', 'unemployment']);
 
 const HIST_WB_INDICATORS = INDICATORS.filter(i => i.wb);
+
+function setHistFromURL(ids, mode) {
+  if (ids && ids.length) histSelected = new Set(ids.slice(0, HIST_MAX_IND));
+  if (mode && document.getElementById('histChartMode')) document.getElementById('histChartMode').value = mode;
+}
 
 function initHistoryTab() {
   const picker = document.getElementById('histIndPicker');
@@ -22,7 +28,7 @@ function toggleHistInd(cb) {
   if (cb.checked) {
     if (histSelected.size >= HIST_MAX_IND) {
       cb.checked = false;
-      alert('Máximo de ' + HIST_MAX_IND + ' indicadores. Desmarque um antes de adicionar.');
+      alert('Para manter o gráfico legível, selecione no máximo ' + HIST_MAX_IND + ' indicadores. Desmarque um antes de adicionar.');
       return;
     }
     histSelected.add(id);
@@ -38,11 +44,12 @@ function toggleHistInd(cb) {
   }
   updateHistIndCount();
   renderHistoryPanel();
+  if (typeof saveSessionState === 'function') saveSessionState();
 }
 
 function updateHistIndCount() {
   const el = document.getElementById('histIndCount');
-  if (el) el.textContent = histSelected.size + ' de ' + HIST_MAX_IND + ' indicadores selecionados';
+  if (el) el.textContent = histSelected.size + ' indicador' + (histSelected.size !== 1 ? 'es' : '') + ' no gráfico — alterações aplicam em tempo real';
 }
 
 function getHistSelected() {
@@ -359,6 +366,7 @@ function renderHistoryChart(code, indIds, mode) {
       tension: 0.2,
       spanGaps: true,
       borderWidth: 2,
+      borderDash: HIST_LINE_DASHES[i % HIST_LINE_DASHES.length],
       pointRadius: years.map(y => (eventYears.has(y) || noteYears.has(y)) ? 7 : (years.length > 50 ? 0 : 3)),
       pointBackgroundColor: years.map(y => noteYears.has(y) ? '#9b7ec8' : (eventYears.has(y) ? '#c9a227' : HIST_CHART_COLORS[i % HIST_CHART_COLORS.length])),
       pointBorderColor: years.map(y => eventYears.has(y) ? '#ececec' : HIST_CHART_COLORS[i % HIST_CHART_COLORS.length]),
@@ -398,7 +406,12 @@ function renderHistoryChart(code, indIds, mode) {
       }
     }
   });
-  document.getElementById('histLegend').innerHTML = '<p class="muted-text">Pontos <span style="color:var(--c-amber)">●</span> dourados = eventos · <span style="color:var(--c-purple)">●</span> roxos = suas anotações</p>';
+  document.getElementById('histLegend').innerHTML = '<p class="muted-text">Pontos <span style="color:var(--c-amber)">●</span> dourados = eventos · <span style="color:var(--c-purple)">●</span> roxos = suas anotações · linhas tracejadas distinguem séries para daltonismo</p>';
+  const c = getCountry(code);
+  const range = years.length ? years[0] + '–' + years[years.length - 1] : '';
+  if (typeof setChartAria === 'function') {
+    setChartAria('chartHistory', 'Gráfico histórico — ' + (c?.name || code) + ' ' + range + ' — ' + indIds.map(id => getInd(id).label).join(', '));
+  }
 }
 
 function renderCorrelationPanel(code) {

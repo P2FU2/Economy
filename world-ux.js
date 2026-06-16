@@ -1,25 +1,34 @@
 /* WORLDPANEL — UX: navegação agrupada, mobile, hero, deep linking, perfil */
 
 const NAV_GROUPS = [
-  { id: 'explore', label: 'Explorar', tabs: [
+  { id: 'explore', label: 'Explorar', icon: 'chart', tabs: [
     { id: 'overview', label: 'Visão Geral' },
     { id: 'indicators', label: 'Histórico' },
     { id: 'compare', label: 'Comparar' }
   ]},
-  { id: 'countries', label: 'Países', tabs: [
+  { id: 'countries', label: 'Países', icon: 'globe', tabs: [
     { id: 'quality', label: 'Qualidade' },
     { id: 'guides', label: 'Guias País' },
     { id: 'relocation', label: 'Mudança' }
   ]},
-  { id: 'tools', label: 'Ferramentas', tabs: [
+  { id: 'tools', label: 'Ferramentas', icon: 'tools', tabs: [
     { id: 'formulas', label: 'Fórmulas' },
     { id: 'conclusions', label: 'Análise' },
     { id: 'planner', label: 'Planejamento' }
   ]},
-  { id: 'settings', label: 'Sistema', tabs: [
+  { id: 'settings', label: 'Config', icon: 'gear', tabs: [
     { id: 'config', label: 'Configurações' }
   ]}
 ];
+
+const NAV_ICONS = {
+  chart: '<svg viewBox="0 0 20 20" aria-hidden="true"><path d="M3 16V8h3v8H3zm5 0V4h3v12H8zm5 0v-6h3v6h-3z" fill="currentColor"/></svg>',
+  globe: '<svg viewBox="0 0 20 20" aria-hidden="true"><circle cx="10" cy="10" r="7.5" stroke="currentColor" stroke-width="1.4" fill="none"/><path d="M2.5 10h15M10 2.5c2 2.5 3 5 3 7.5s-1 5-3 7.5M10 2.5c-2 2.5-3 5-3 7.5s1 5 3 7.5" stroke="currentColor" stroke-width="1.2" fill="none"/></svg>',
+  tools: '<svg viewBox="0 0 20 20" aria-hidden="true"><path d="M14.2 3.5a4.5 4.5 0 00-6 6L3 15l2 2 5.2-5.2a4.5 4.5 0 006-6l-2.2 2.2-2-2 2.2-2.2z" fill="currentColor"/></svg>',
+  gear: '<svg viewBox="0 0 20 20" aria-hidden="true"><path d="M10 12.2a2.2 2.2 0 100-4.4 2.2 2.2 0 000 4.4zm7-2.2l-1.4-.2a5.8 5.8 0 00-.5-1.2l.8-1.2-1.4-1.4-1.2.8a5.8 5.8 0 00-1.2-.5L12 4.8V3.2H8v1.6l-1.4.2a5.8 5.8 0 00-1.2.5l-1.2-.8L2.8 5.5l.8 1.2a5.8 5.8 0 00-.5 1.2L2 8.2v3.6l1.4.2c.1.4.3.8.5 1.2l-.8 1.2 1.4 1.4 1.2-.8c.4.2.8.4 1.2.5l.2 1.4h4l.2-1.4c.4-.1.8-.3 1.2-.5l1.2.8 1.4-1.4-.8-1.2c.2-.4.4-.8.5-1.2l1.4-.2V8.2z" fill="currentColor"/></svg>'
+};
+
+const ONBOARD_KEY = 'worldpanel_onboarded';
 
 const FAMILY_PROFILE_KEY = 'worldpanel_family_profile';
 const HERO_DISMISS_KEY = 'worldpanel_hero_dismissed';
@@ -89,7 +98,8 @@ function buildMainNav() {
   let html = '<div class="nav-inner">';
   NAV_GROUPS.forEach(g => {
     html += '<div class="nav-group" data-group="' + g.id + '">';
-    html += '<button type="button" class="nav-group-btn" aria-haspopup="true" aria-expanded="false">' + g.label + '<span class="nav-chevron" aria-hidden="true">▾</span></button>';
+    html += '<button type="button" class="nav-group-btn" aria-haspopup="true" aria-expanded="false">' +
+      '<span class="nav-icon">' + (NAV_ICONS[g.icon] || '') + '</span>' + g.label + '<span class="nav-chevron" aria-hidden="true">▾</span></button>';
     html += '<div class="nav-dropdown" role="menu">';
     g.tabs.forEach(t => {
       const active = t.id === activeTab ? ' active' : '';
@@ -130,7 +140,11 @@ function buildMainNav() {
 
 function onTabActivate(tabId) {
   if (tabId === 'compare' && typeof initCompareTab === 'function') { initCompareTab(); if (typeof renderCompare === 'function') renderCompare(); }
-  if (tabId === 'indicators' && typeof initHistoryTab === 'function') { initHistoryTab(); if (typeof renderHistoryPanel === 'function') renderHistoryPanel(); }
+  if (tabId === 'indicators' && typeof initHistoryTab === 'function') {
+    initHistoryTab();
+    if (typeof renderHistoryPanel === 'function') renderHistoryPanel();
+    showOnboardingHint();
+  }
   if (tabId === 'relocation') {
     initFamilyProfileForm();
     if (typeof renderRelocation === 'function') renderRelocation();
@@ -188,21 +202,99 @@ function updateURLState() {
   const params = new URLSearchParams();
   if (activeTab && activeTab !== 'overview') params.set('tab', activeTab);
   const country = document.getElementById('indCountry')?.value;
-  if (country && (activeTab === 'indicators' || activeTab === 'guides')) params.set('country', country);
+  if (country && (activeTab === 'indicators' || activeTab === 'guides')) {
+    params.set('pais', country);
+    params.set('country', country);
+  }
+  if (activeTab === 'indicators') {
+    if (typeof getHistSelected === 'function') {
+      const ids = getHistSelected();
+      if (ids.length) params.set('ind', ids.join(','));
+    }
+    const mode = document.getElementById('histChartMode')?.value;
+    if (mode && mode !== 'multi') params.set('mode', mode);
+  }
   const q = params.toString();
   const url = q ? ('?' + q) : (location.pathname || 'index.html');
   try { history.replaceState({ tab: activeTab, country }, '', url); } catch (e) { /* file:// */ }
+  if (typeof saveSessionState === 'function') saveSessionState();
 }
 
 function applyURLState() {
   const params = new URLSearchParams(location.search);
   const tab = params.get('tab');
-  const country = params.get('country');
+  const country = params.get('pais') || params.get('country');
+  const ind = params.get('ind');
+  const mode = params.get('mode');
   const valid = NAV_GROUPS.some(g => g.tabs.some(t => t.id === tab));
+  if (typeof setHistFromURL === 'function' && ind) setHistFromURL(ind.split(',').filter(Boolean), mode);
+  else if (mode && document.getElementById('histChartMode')) document.getElementById('histChartMode').value = mode;
   if (valid) switchTab(tab, { country: country || undefined, skipUrl: true });
-  else if (country && document.getElementById('indCountry')) {
+  else if (typeof restoreSessionState === 'function') restoreSessionState();
+  if (country && document.getElementById('indCountry')) {
     document.getElementById('indCountry').value = country;
+    const c = getCountry(country);
+    const search = document.getElementById('indSearch');
+    if (c && search) search.value = c.name;
   }
+}
+
+function buildBottomNav() {
+  const el = document.getElementById('bottomNav');
+  if (!el || el.dataset.built) return;
+  el.dataset.built = '1';
+  let html = '';
+  NAV_GROUPS.forEach(g => {
+    html += '<button type="button" class="bottom-nav-btn" data-group="' + g.id + '" aria-label="' + g.label + '">' +
+      '<span class="nav-icon">' + (NAV_ICONS[g.icon] || '') + '</span><span>' + g.label + '</span></button>';
+  });
+  el.innerHTML = html;
+  el.querySelectorAll('.bottom-nav-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const g = NAV_GROUPS.find(x => x.id === btn.dataset.group);
+      if (!g) return;
+      document.body.classList.add('nav-open');
+      const toggle = document.getElementById('navToggle');
+      if (toggle) toggle.setAttribute('aria-expanded', 'true');
+      const groupEl = document.querySelector('.nav-group[data-group="' + g.id + '"]');
+      if (groupEl) {
+        document.querySelectorAll('.nav-group').forEach(x => x.classList.remove('open'));
+        groupEl.classList.add('open');
+        groupEl.querySelector('.nav-group-btn')?.setAttribute('aria-expanded', 'true');
+      }
+      if (g.tabs.length === 1) switchTab(g.tabs[0].id);
+    });
+  });
+}
+
+function showOnboardingHint() {
+  if (localStorage.getItem(ONBOARD_KEY)) return;
+  const input = document.getElementById('indSearch');
+  if (!input || input.dataset.hint) return;
+  input.dataset.hint = '1';
+  const hint = document.createElement('div');
+  hint.className = 'coach-mark';
+  hint.setAttribute('role', 'status');
+  hint.innerHTML = '<strong>Comece aqui</strong> — digite "bra" ou "ita" para trocar o país. Brasil já está pré-carregado.';
+  input.parentNode.appendChild(hint);
+  setTimeout(() => { hint.classList.add('visible'); }, 400);
+  const dismiss = () => {
+    hint.remove();
+    localStorage.setItem(ONBOARD_KEY, '1');
+    input.removeEventListener('focus', dismiss);
+  };
+  input.addEventListener('focus', dismiss, { once: true });
+  setTimeout(dismiss, 8000);
+}
+
+function initDefaultCountry() {
+  const prefs = typeof UserPrefs !== 'undefined' ? UserPrefs.load() : {};
+  const code = prefs.lastCountry || 'BRA';
+  const sel = document.getElementById('indCountry');
+  const search = document.getElementById('indSearch');
+  const c = getCountry(code);
+  if (sel && c) sel.value = c.code;
+  if (search && c) search.value = c.name;
 }
 
 function initMobileNav() {
@@ -305,7 +397,9 @@ function clearOverviewSkeleton() {
 
 function initUX() {
   buildMainNav();
+  buildBottomNav();
   initMobileNav();
+  initDefaultCountry();
   renderWelcomeHero();
   initFamilyProfileForm();
   renderOverviewSkeleton();

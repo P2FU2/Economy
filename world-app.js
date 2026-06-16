@@ -219,6 +219,7 @@ function setTableCat(cat) {
   currentTableCat = cat;
   renderTableCatTabs();
   renderTable();
+  if (typeof saveSessionState === 'function') saveSessionState();
 }
 
 function renderTable() {
@@ -246,13 +247,14 @@ function makeBarChart(canvasId, key, label, color, limit = 15, asc = false) {
   const canvas = document.getElementById(canvasId);
   if (!canvas) return;
   if (charts[canvasId]) charts[canvasId].destroy();
+  const paletteColor = color || (typeof CHART_PALETTE !== 'undefined' ? CHART_PALETTE[Object.keys(charts).length % CHART_PALETTE.length] : '#5b8fd4');
   const ctx2d = canvas.getContext('2d');
   let active = getActiveList().slice().sort((a, b) => {
     const va = data[a.code]?.[key] ?? (asc ? 999 : -999);
     const vb = data[b.code]?.[key] ?? (asc ? 999 : -999);
     return asc ? va - vb : vb - va;
   }).slice(0, limit);
-  const grad = barGradient(ctx2d, color, color + '55');
+  const grad = barGradient(ctx2d, paletteColor, paletteColor + '55');
   charts[canvasId] = new Chart(canvas, {
     type: 'bar',
     data: {
@@ -260,7 +262,7 @@ function makeBarChart(canvasId, key, label, color, limit = 15, asc = false) {
       datasets: [{
         label, data: active.map(c => data[c.code]?.[key]),
         backgroundColor: grad,
-        borderColor: color,
+        borderColor: paletteColor,
         borderWidth: 1,
         borderRadius: 6,
         borderSkipped: false
@@ -268,6 +270,8 @@ function makeBarChart(canvasId, key, label, color, limit = 15, asc = false) {
     },
     options: chartOpts(false)
   });
+  const top = active[0];
+  setChartAria(canvasId, 'Gráfico de barras: ' + label + ' — ' + active.length + ' países' + (top ? ', líder: ' + top.name : ''));
 }
 
 function chartOpts(legend = true) {
@@ -275,30 +279,39 @@ function chartOpts(legend = true) {
     responsive: true,
     maintainAspectRatio: false,
     animation: { duration: 600, easing: 'easeOutQuart' },
+    interaction: { mode: 'index', intersect: false, axis: 'x' },
+    events: ['mousemove', 'mouseout', 'click', 'touchstart', 'touchmove'],
     plugins: {
-      legend: { display: legend, labels: { color: '#8a8a8a', font: { size: 11, family: "'Inter','Segoe UI',sans-serif" }, padding: 14 } },
+      legend: { display: legend, labels: { color: '#9a9a9a', font: { size: 11, family: "'Inter','Segoe UI',sans-serif" }, padding: 14, usePointStyle: true } },
       tooltip: {
         backgroundColor: '#1a1a1a',
         borderColor: '#3a3a3a',
         borderWidth: 1,
         titleColor: '#ececec',
-        bodyColor: '#8a8a8a',
+        bodyColor: '#9a9a9a',
         padding: 10,
         cornerRadius: 6
       }
     },
     scales: {
-      x: { ticks: { color: '#8a8a8a', font: { size: 9 } }, grid: { display: false } },
-      y: { ticks: { color: '#8a8a8a' }, grid: { color: 'rgba(46,46,46,0.5)', drawBorder: false }, border: { display: false } }
+      x: { ticks: { color: '#9a9a9a', font: { size: 9 } }, grid: { display: false } },
+      y: { ticks: { color: '#9a9a9a' }, grid: { color: 'rgba(46,46,46,0.5)', drawBorder: false }, border: { display: false } }
     }
   };
 }
 
+function setChartAria(canvasId, label) {
+  const canvas = document.getElementById(canvasId);
+  const box = canvas?.closest('.chart-box');
+  if (box) box.setAttribute('aria-label', label);
+}
+
 function renderOverviewCharts() {
-  makeBarChart('chartGdp', 'gdp_pc_ppp', 'PIB PPP', '#5b8fd4');
-  makeBarChart('chartHdi', 'hdi', 'IDH', '#3d9a6a', 15);
-  makeBarChart('chartHappy', 'happiness', 'Felicidade', '#c9a227');
-  makeBarChart('chartLife', 'life_expectancy', 'Anos', '#9b7ec8');
+  const p = typeof CHART_PALETTE !== 'undefined' ? CHART_PALETTE : ['#5b8fd4', '#3d9a6a', '#c9a227', '#9b7ec8'];
+  makeBarChart('chartGdp', 'gdp_pc_ppp', 'PIB PPP', p[0]);
+  makeBarChart('chartHdi', 'hdi', 'IDH', p[1], 15);
+  makeBarChart('chartHappy', 'happiness', 'Felicidade', p[2]);
+  makeBarChart('chartLife', 'life_expectancy', 'Anos', p[3]);
 }
 
 function renderQualityTab() {

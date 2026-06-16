@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="description" content="Compare indicadores econômicos de 41 países desde 1960. Histórico, simulador de expatriação, guias UE e plano Itália.">
   <title>WORLDPANEL — Painel Econômico Global</title>
+  <link rel="icon" href="favicon.svg" type="image/svg+xml">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://flagcdn.com">
   <link rel="preconnect" href="https://images.unsplash.com">
@@ -14,7 +15,7 @@
     :root{
       --bg:#080808;--surface:#111111;--surface2:#1a1a1a;--surface3:#222222;
       --border:#2e2e2e;--border-light:#3a3a3a;
-      --text:#ececec;--muted:#8a8a8a;--dim:#5c5c5c;
+      --text:#ececec;--muted:#9a9a9a;--dim:#6e6e6e;
       --accent:#e8e8e8;--accent-hover:#ffffff;
       --c-green:#3d9a6a;--c-red:#c45c5c;--c-amber:#c9a227;--c-blue:#5b8fd4;--c-purple:#9b7ec8;
       --radius:6px;--radius-lg:10px;
@@ -274,8 +275,38 @@
     .sk-lg{height:22px;margin:.5rem 0}
     .sk-w40{width:40%}.sk-w60{width:60%}.sk-w80{width:80%}
     .app-loading .table-wrap,.app-loading .chart-box{opacity:.55;pointer-events:none}
-    .section-head{font-size:1rem;font-weight:600;color:var(--text);margin:0 0 1rem;padding-bottom:.65rem;border-bottom:1px solid var(--border);letter-spacing:.02em}
-    .section-head span{font-size:.72rem;font-weight:500;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;display:block;margin-bottom:.2rem}
+    .section-head{font-size:1.125rem;font-weight:500;color:var(--text);margin:0 0 1rem;padding-bottom:.75rem;border-bottom:1px solid var(--border);letter-spacing:.01em}
+    .section-head span{font-size:.72rem;font-weight:500;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;display:block;margin-bottom:.35rem}
+    .content-zone{margin-top:2rem;padding-top:2rem;border-top:1px solid var(--border)}
+    .content-zone:first-child{margin-top:0;padding-top:0;border-top:none}
+    .zone-label{font-size:.68rem;text-transform:uppercase;letter-spacing:.1em;color:var(--dim);margin-bottom:.75rem}
+    .visually-hidden{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
+    .country-combo-wrap{position:relative;display:inline-block}
+    .country-dropdown{display:none;position:absolute;top:calc(100% + 4px);left:0;right:0;min-width:220px;max-height:240px;overflow-y:auto;background:var(--surface);border:1px solid var(--border-light);border-radius:var(--radius-lg);box-shadow:0 12px 32px rgba(0,0,0,.45);z-index:150}
+    .country-dropdown.open{display:block}
+    .country-dropdown-item{display:flex;align-items:center;gap:.5rem;width:100%;padding:.5rem .65rem;background:transparent;border:none;color:var(--text);font-size:.82rem;text-align:left;cursor:pointer}
+    .country-dropdown-item code{font-size:.68rem;color:var(--dim);margin-left:auto}
+    .country-dropdown-item:hover,.country-dropdown-item.active{background:var(--surface2)}
+    .country-dropdown-empty{padding:.65rem;font-size:.78rem;color:var(--muted)}
+    .table-scroll-wrap{position:relative}
+    .table-scroll-wrap .table-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch}
+    .scroll-hint{font-size:.68rem;color:var(--dim);text-align:right;margin-top:.35rem;letter-spacing:.03em}
+    .scroll-hint::after{content:' → deslize para ver mais'}
+    .nav-icon{display:inline-flex;width:16px;height:16px;flex-shrink:0}
+    .nav-icon svg{width:16px;height:16px}
+    .nav-group-btn .nav-icon{opacity:.75}
+    .nav-group.has-active .nav-group-btn .nav-icon,.nav-group-btn:hover .nav-icon{opacity:1;color:var(--c-green)}
+    .bottom-nav{display:none;position:fixed;bottom:0;left:0;right:0;z-index:110;background:var(--surface);border-top:1px solid var(--border);padding:.35rem .25rem calc(.35rem + env(safe-area-inset-bottom));grid-template-columns:repeat(4,1fr);gap:.15rem}
+    .bottom-nav-btn{display:flex;flex-direction:column;align-items:center;gap:.15rem;background:transparent;border:none;color:var(--muted);font-size:.58rem;padding:.35rem .2rem;cursor:pointer;border-radius:var(--radius)}
+    .bottom-nav-btn .nav-icon{width:20px;height:20px}
+    .bottom-nav-btn .nav-icon svg{width:20px;height:20px}
+    .bottom-nav-btn:hover,.bottom-nav-btn:focus-visible{color:var(--text);background:var(--surface2);outline:none}
+    .coach-mark{position:absolute;top:calc(100% + 8px);left:0;right:0;z-index:160;padding:.65rem .85rem;background:var(--surface3);border:1px solid var(--c-amber);border-radius:var(--radius);font-size:.78rem;color:var(--muted);opacity:0;transform:translateY(-4px);transition:opacity .25s,transform .25s;box-shadow:0 8px 24px rgba(0,0,0,.4)}
+    .coach-mark.visible{opacity:1;transform:translateY(0)}
+    .coach-mark strong{color:var(--c-amber);display:block;margin-bottom:.2rem}
+    button:focus-visible,.nav-tab:focus-visible,.nav-group-btn:focus-visible,.btn:focus-visible,.country-dropdown-item:focus-visible,input:focus-visible,select:focus-visible{outline:2px solid var(--c-blue);outline-offset:2px}
+    .chart-card{padding:1.5rem}
+    .chart-card h3{font-size:.78rem;margin-bottom:1rem}
     .profile-form{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:.65rem;margin:.85rem 0}
     .profile-form label{display:flex;flex-direction:column;gap:.3rem;font-size:.68rem;color:var(--muted);text-transform:uppercase;letter-spacing:.04em}
     .profile-form select,.profile-form input{width:100%}
@@ -291,11 +322,25 @@
       .nav-inner{flex-direction:column;align-items:stretch}
       .nav-dropdown{position:static;display:flex!important;flex-direction:column;background:transparent;border:none;box-shadow:none;padding:.25rem 0 .5rem 1rem}
       .nav-group.open .nav-dropdown,.nav-group .nav-dropdown{display:flex!important}
-      .nav-group-btn{width:100%;justify-content:space-between}
-      main{padding:1rem}
+      .nav-group-btn{width:100%;justify-content:flex-start;gap:.5rem}
+      main{padding:1rem 1rem 5rem}
       header{padding:1rem}
       #mainNav{padding:4rem 1rem 1.5rem}
       .grid-4{grid-template-columns:repeat(2,1fr)}
+      .bottom-nav{display:grid}
+      .nav-group .nav-dropdown{display:flex!important}
+    }
+    @media(min-width:769px) and (max-width:1100px){
+      body{display:grid;grid-template-columns:200px 1fr;grid-template-rows:auto 1fr auto}
+      header{grid-column:1/-1}
+      #mainNav{grid-column:1;grid-row:2;position:sticky;top:0;align-self:start;height:calc(100vh - 80px);overflow-y:auto;border-right:1px solid var(--border);border-bottom:none;padding:.75rem}
+      .nav-inner{flex-direction:column}
+      .nav-dropdown{position:static;display:flex!important;flex-direction:column;background:transparent;border:none;box-shadow:none;padding:.2rem 0 .4rem 1.25rem}
+      .nav-group .nav-dropdown{display:flex!important}
+      .nav-overlay,.bottom-nav{display:none!important}
+      .nav-toggle{display:none!important}
+      main{grid-column:2;grid-row:2;padding:1.25rem 1.5rem}
+      footer{grid-column:1/-1}
     }
     @media(max-width:420px){.grid-4{grid-template-columns:1fr}}
     [data-theme="light"]{
@@ -362,40 +407,51 @@
     <div id="welcomeHero" class="welcome-hero" role="region" aria-label="Introdução"></div>
     <div id="favoritesBar" class="favorites-bar hidden" aria-label="Países favoritos"></div>
     <div id="flagStrip" class="flag-strip"></div>
-    <div class="grid grid-4" style="margin-bottom:1.25rem" id="kpiCards"></div>
-    <div class="cat-tabs" id="tableCatTabs"></div>
-    <div class="card" style="margin-bottom:1.25rem">
-      <h3 class="section-head" id="tableTitle"><span>Dados macro</span>Tabela — Indicadores</h3>
-      <div class="chart-toolbar" style="margin-bottom:.5rem"><button type="button" class="btn btn-sm secondary" onclick="exportMainTableCsv()">Exportar CSV</button></div>
-      <div class="table-wrap" id="mainTable"></div>
+    <div class="content-zone">
+      <p class="zone-label">Resumo</p>
+      <div class="grid grid-4" id="kpiCards"></div>
     </div>
-    <div class="grid grid-2">
-      <div class="card chart-card"><h3>PIB per Capita PPP</h3><div class="chart-box" role="img" aria-label="Gráfico PIB per capita PPP"><canvas id="chartGdp"></canvas></div><div class="chart-toolbar"><button type="button" class="btn btn-sm secondary" onclick="exportChartPng('chartGdp','pib-ppp')">PNG</button></div></div>
-      <div class="card chart-card"><h3>IDH — Desenvolvimento Humano</h3><div class="chart-box" role="img" aria-label="Gráfico IDH"><canvas id="chartHdi"></canvas></div><div class="chart-toolbar"><button type="button" class="btn btn-sm secondary" onclick="exportChartPng('chartHdi','idh')">PNG</button></div></div>
-      <div class="card chart-card"><h3>Índice de Felicidade</h3><div class="chart-box" role="img" aria-label="Gráfico felicidade"><canvas id="chartHappy"></canvas></div><div class="chart-toolbar"><button type="button" class="btn btn-sm secondary" onclick="exportChartPng('chartHappy','felicidade')">PNG</button></div></div>
-      <div class="card chart-card"><h3>Expectativa de Vida</h3><div class="chart-box" role="img" aria-label="Gráfico expectativa de vida"><canvas id="chartLife"></canvas></div><div class="chart-toolbar"><button type="button" class="btn btn-sm secondary" onclick="exportChartPng('chartLife','expectativa-vida')">PNG</button></div></div>
+    <div class="content-zone">
+      <p class="zone-label">Indicadores</p>
+      <div class="cat-tabs" id="tableCatTabs"></div>
+      <div class="card">
+        <h2 class="section-head" id="tableTitle"><span>Dados macro</span>Tabela — Indicadores</h2>
+        <div class="chart-toolbar" style="margin-bottom:.5rem"><button type="button" class="btn btn-sm secondary" onclick="exportMainTableCsv()">Exportar CSV</button></div>
+        <div class="table-scroll-wrap">
+          <div class="table-wrap" id="mainTable"></div>
+          <p class="scroll-hint" aria-hidden="true">Tabela ampla</p>
+        </div>
+      </div>
+    </div>
+    <div class="content-zone">
+      <p class="zone-label">Gráficos comparativos</p>
+      <div class="grid grid-2">
+        <div class="card chart-card"><h3>PIB per Capita PPP</h3><div class="chart-toolbar"><button type="button" class="btn btn-sm secondary" onclick="exportChartPng('chartGdp','pib-ppp')">PNG</button></div><div class="chart-box" role="img" aria-label="Gráfico PIB per capita PPP"><canvas id="chartGdp"></canvas></div></div>
+        <div class="card chart-card"><h3>IDH — Desenvolvimento Humano</h3><div class="chart-toolbar"><button type="button" class="btn btn-sm secondary" onclick="exportChartPng('chartHdi','idh')">PNG</button></div><div class="chart-box" role="img" aria-label="Gráfico IDH"><canvas id="chartHdi"></canvas></div></div>
+        <div class="card chart-card"><h3>Índice de Felicidade</h3><div class="chart-toolbar"><button type="button" class="btn btn-sm secondary" onclick="exportChartPng('chartHappy','felicidade')">PNG</button></div><div class="chart-box" role="img" aria-label="Gráfico felicidade"><canvas id="chartHappy"></canvas></div></div>
+        <div class="card chart-card"><h3>Expectativa de Vida</h3><div class="chart-toolbar"><button type="button" class="btn btn-sm secondary" onclick="exportChartPng('chartLife','expectativa-vida')">PNG</button></div><div class="chart-box" role="img" aria-label="Gráfico expectativa de vida"><canvas id="chartLife"></canvas></div></div>
+      </div>
     </div>
   </section>
 
   <section id="tab-indicators" class="tab">
     <div class="card collapsible collapsed" id="histPickerCollapse" style="margin-bottom:1.25rem">
       <button type="button" class="collapse-toggle" onclick="toggleCollapse('histPickerCollapse')">
-        <span class="collapse-icon">▾</span> Filtros — país e indicadores (até 8)
+        <span class="collapse-icon">▾</span> Filtros — país e indicadores
       </button>
       <div class="collapse-body">
         <div class="form-row" style="margin-top:.75rem">
-          <label>País</label>
-          <input type="text" id="indSearch" class="country-search" placeholder="Buscar país..." style="min-width:180px">
-          <select id="indCountry" onchange="renderHistoryPanel()" style="min-width:140px"></select>
-          <label>Modo</label>
+          <label for="indSearch">País</label>
+          <input type="text" id="indSearch" class="country-search" placeholder="Digite: bra, ita, ale…" style="min-width:200px" autocomplete="off">
+          <select id="indCountry" class="visually-hidden" onchange="renderHistoryPanel()" aria-hidden="true" tabindex="-1"></select>
+          <label for="histChartMode">Modo</label>
           <select id="histChartMode" onchange="renderHistoryPanel()">
             <option value="multi">Múltiplas séries</option>
             <option value="normalized">Índice base 100</option>
             <option value="correlation">Correlação (dispersão)</option>
           </select>
-          <button class="btn primary" onclick="renderHistoryPanel()">Atualizar</button>
         </div>
-        <p class="muted-text" id="histIndCount">Selecione até 8 indicadores</p>
+        <p class="muted-text" id="histIndCount">Selecione indicadores — mudanças aplicam em tempo real</p>
         <div id="histIndPicker" class="hist-picker"></div>
       </div>
     </div>
@@ -415,15 +471,19 @@
       <div class="card" id="histChanges"></div>
     </div>
     <div class="card" style="margin-top:1.25rem">
-      <h3>Governantes — mandatos, medidas e consequências</h3>
+      <h2 class="section-head"><span>Política</span>Governantes — mandatos, medidas e consequências</h2>
       <div id="histLeaders"></div>
     </div>
   </section>
 
   <section id="tab-quality" class="tab">
     <div class="card" style="margin-bottom:1.25rem">
-      <h3>Índices de Qualidade de Vida — IDH, Felicidade, Gini, Saúde, Educação</h3>
-      <div class="table-wrap" id="qualityTable"></div>
+      <h2 class="section-head"><span>Rankings</span>Índices de Qualidade de Vida</h2>
+      <div class="chart-toolbar" style="margin-bottom:.5rem"><button type="button" class="btn btn-sm secondary" onclick="exportTableCsv(document.querySelector('#qualityTable table'),'qualidade-vida.csv')">Exportar CSV</button></div>
+      <div class="table-scroll-wrap">
+        <div class="table-wrap" id="qualityTable"></div>
+        <p class="scroll-hint" aria-hidden="true">Tabela ampla</p>
+      </div>
     </div>
     <div class="grid grid-2">
       <div class="card"><h3>Ranking IDH (PNUD)</h3><div class="chart-box"><canvas id="chartQHdi"></canvas></div></div>
@@ -483,8 +543,8 @@
     </div>
     <div class="form-row">
       <label>Guia detalhado</label>
-      <input type="text" id="guideSearch" class="country-search" placeholder="Buscar país..." style="min-width:200px">
-      <select id="guideCountry" onchange="renderCountryGuide(this.value)"></select>
+      <input type="text" id="guideSearch" class="country-search" placeholder="Digite país: ita, por, esp…" style="min-width:200px" autocomplete="off">
+      <select id="guideCountry" class="visually-hidden" onchange="renderCountryGuide(this.value)" aria-hidden="true" tabindex="-1"></select>
       <button class="btn primary" onclick="renderCountryGuide(document.getElementById('guideCountry').value)">Carregar</button>
     </div>
     <div id="guideDetail"></div>
@@ -601,6 +661,8 @@
 </main>
 
 <footer>World Bank Open Data API (gratuita) · PNUD (IDH) · World Happiness Report · Dados compilados 2023/2024</footer>
+
+<nav id="bottomNav" class="bottom-nav" aria-label="Navegação rápida mobile"></nav>
 
 <script src="world-data.js"></script>
 <script src="world-db.js"></script>

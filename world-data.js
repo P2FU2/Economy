@@ -252,33 +252,150 @@ function countryHeroCompact(code, subtitle, collapseId) {
     '<div class="collapse-body">' + inner + '</div></div>';
 }
 
-function initCountrySearch(inputId, selectId, onPick) {
+const CHART_PALETTE = ['#5b8fd4', '#3d9a6a', '#c9a227', '#c45c5c', '#9b7ec8', '#4db8a4', '#e07b53', '#8a8a8a'];
+const CHART_LINE_DASHES = [[], [6, 4], [2, 3], [8, 4, 2, 4], [4, 4], [10, 5, 2, 5], [2, 6], [6, 6]];
+
+function fuzzyCountryScore(query, country) {
+  const q = (query || '').toLowerCase().trim();
+  if (!q) return 1;
+  const name = country.name.toLowerCase();
+  const code = country.code.toLowerCase();
+  if (code === q) return 100;
+  if (name === q) return 95;
+  if (name.startsWith(q)) return 85;
+  if (name.includes(q)) return 70;
+  if (code.startsWith(q)) return 65;
+  let qi = 0;
+  for (let i = 0; i < name.length && qi < q.length; i++) {
+    if (name[i] === q[qi]) qi++;
+  }
+  if (qi === q.length) return 45 + (q.length / Math.max(name.length, 1)) * 25;
+  return 0;
+}
+
+function searchCountries(query, limit, pool) {
+  pool = pool || COUNTRIES;
+  const q = (query || '').trim();
+  if (!q) return pool.slice(0, limit || 8);
+  return pool
+    .map(c => ({ c, score: fuzzyCountryScore(q, c) }))
+    .filter(x => x.score > 0)
+    .sort((a, b) => b.score - a.score)
+    .slice(0, limit || 8)
+    .map(x => x.c);
+}
+
+function pickCountry(inputId, selectId, code, onPick) {
+  const input = document.getElementById(inputId);
+  const sel = selectId ? document.getElementById(selectId) : null;
+  const c = getCountry(code);
+  if (!c) return;
+  if (sel) sel.value = c.code;
+  if (input) input.value = c.name;
+  const list = document.getElementById(inputId + 'Dropdown');
+  if (list) list.classList.remove('open');
+  if (onPick) onPick(c.code);
+}
+
+function initCountrySearch(inputId, selectId, onPick, opts) {
+  opts = opts || {};
   const input = document.getElementById(inputId);
   const sel = selectId ? document.getElementById(selectId) : null;
   if (!input || input.dataset.bound) return;
   input.dataset.bound = '1';
-  const listId = inputId + 'List';
-  let dl = document.getElementById(listId);
-  if (!dl) {
-    dl = document.createElement('datalist');
-    dl.id = listId;
-    dl.innerHTML = COUNTRIES.map(c => '<option value="' + c.name + '">').join('');
-    input.setAttribute('list', listId);
-    input.parentNode.appendChild(dl);
+  if (sel) sel.classList.add('visually-hidden');
+  input.setAttribute('role', 'combobox');
+  input.setAttribute('aria-autocomplete', 'list');
+  input.setAttribute('aria-expanded', 'false');
+  const pool = opts.pool || COUNTRIES;
+  const listId = inputId + 'Dropdown';
+  let list = document.getElementById(listId);
+  if (!list) {
+    list = document.createElement('div');
+    list.id = listId;
+    list.className = 'country-dropdown';
+    list.setAttribute('role', 'listbox');
+    input.parentNode.classList.add('country-combo-wrap');
+    input.parentNode.appendChild(list);
   }
-  const sync = () => {
-    const q = (input.value || '').trim().toLowerCase();
-    const c = COUNTRIES.find(x => x.name.toLowerCase() === q || x.code.toLowerCase() === q);
-    if (c) {
-      if (sel) sel.value = c.code;
-      if (onPick) onPick(c.code);
-    } else if (q) {
-      const match = COUNTRIES.find(x => x.name.toLowerCase().includes(q));
-      if (match) { if (sel) sel.value = match.code; input.value = match.name; if (onPick) onPick(match.code); }
+  input.setAttribute('aria-controls', listId);
+
+  let activeIdx = -1;
+  const renderList = (matches) => {
+    if (!matches.length) {
+      list.innerHTML = '<div class="country-dropdown-empty">Nenhum país encontrado</div>';
+      list.classList.add('open');
+      input.setAttribute('aria-expanded', 'true');
+      return;
     }
+    list.innerHTML = matches.map((c, i) =>
+      '<button type="button" class="country-dropdown-item' + (i === activeIdx ? ' active' : '') + '" role="option" data-code="' + c.code + '">' +
+      flagImg(c.code, 'xs') + '<span>' + c.name + '</span><code>' + c.code + '</code></button>'
+    ).join('');
+    list.classList.add('open');
+    input.setAttribute('aria-expanded', 'true');
+    list.querySelectorAll('.country-dropdown-item').forEach(btn => {
+      btn.addEventListener('mousedown', e => {
+        e.preventDefault();
+        pickCountry(inputId, selectId, btn.dataset.code, onPick);
+      });
+    });
   };
-  input.addEventListener('change', sync);
-  input.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); sync(); } });
+
+  const syncFromSelect = () => {
+    if (!sel || !sel.value) return;
+    const c = getCountry(sel.value);
+    if (c) input.value = c.name;
+  };
+  syncFromSelect();
+
+  input.addEventListener('input', () => {
+    activeIdx = -1;
+    renderList(searchCountries(input.value, 8, pool));
+  });
+  input.addEventListener('focus', () => {
+    activeIdx = -1;
+    renderList(searchCountries(input.value, 8, pool));
+  });
+  input.addEventListener('blur', () => {
+    setTimeout(() => {
+      list.classList.remove('open');
+      input.setAttribute('aria-expanded', 'false');
+      const q = (input.value || '').trim();
+      const exact = COUNTRIES.find(x => x.name.toLowerCase() === q.toLowerCase() || x.code.toLowerCase() === q.toLowerCase());
+      const match = exact || searchCountries(q, 1, pool)[0];
+      if (match) pickCountry(inputId, selectId, match.code, onPick);
+      else syncFromSelect();
+    }, 150);
+  });
+  input.addEventListener('keydown', e => {
+    const items = [...list.querySelectorAll('.country-dropdown-item')];
+    if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      activeIdx = Math.min(activeIdx + 1, items.length - 1);
+      items.forEach((el, i) => el.classList.toggle('active', i === activeIdx));
+      if (items[activeIdx]) items[activeIdx].scrollIntoView({ block: 'nearest' });
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      activeIdx = Math.max(activeIdx - 1, 0);
+      items.forEach((el, i) => el.classList.toggle('active', i === activeIdx));
+    } else if (e.key === 'Enter') {
+      e.preventDefault();
+      const code = activeIdx >= 0 && items[activeIdx]
+        ? items[activeIdx].dataset.code
+        : (searchCountries(input.value, 1, pool)[0] || {}).code;
+      if (code) pickCountry(inputId, selectId, code, onPick);
+    } else if (e.key === 'Escape') {
+      list.classList.remove('open');
+      input.setAttribute('aria-expanded', 'false');
+    }
+  });
+  document.addEventListener('click', e => {
+    if (!input.parentNode.contains(e.target)) {
+      list.classList.remove('open');
+      input.setAttribute('aria-expanded', 'false');
+    }
+  });
 }
 
 const INDICATOR_CATS = {

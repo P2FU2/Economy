@@ -51,12 +51,33 @@ const DEFAULT_FAMILY_PROFILE = {
   langLevel: 'basic',
   returnPlan: 'maybe',
   riskTolerance: 3,
-  mustHave: []
+  mustHave: [],
+  visitedCountry: false,
+  healthPlan: false,
+  legalContact: false,
+  targetCity: ''
 };
 
 function readMustHaveFromForm() {
   const keys = ['warm', 'lowcost', 'english', 'safety', 'community', 'healthcare'];
   return keys.filter(k => document.getElementById('fpMust_' + k)?.checked);
+}
+
+function updateRiskLabel() {
+  const slider = document.getElementById('fpRisk');
+  const label = document.getElementById('fpRiskVal');
+  if (slider && label) label.textContent = slider.value;
+}
+
+function syncCostSpFromBrl() {
+  const brlEl = document.getElementById('fpCostSpBrl');
+  const usdEl = document.getElementById('fpCostSp');
+  if (!brlEl || !usdEl) return;
+  const brl = +brlEl.value;
+  if (!brl || brl <= 0) return;
+  const rate = typeof BRL_USD_RATE !== 'undefined' ? BRL_USD_RATE : 5.5;
+  usdEl.value = Math.round(brl / rate);
+  saveFamilyProfileFromForm();
 }
 
 function getFamilyProfile() {
@@ -85,7 +106,11 @@ function saveFamilyProfileFromForm() {
     langLevel: document.getElementById('fpLangLevel')?.value || 'basic',
     returnPlan: document.getElementById('fpReturnPlan')?.value || 'maybe',
     riskTolerance: +(document.getElementById('fpRisk')?.value) || 3,
-    mustHave: readMustHaveFromForm()
+    mustHave: readMustHaveFromForm(),
+    visitedCountry: !!document.getElementById('fpVisited')?.checked,
+    healthPlan: !!document.getElementById('fpHealthPlan')?.checked,
+    legalContact: !!document.getElementById('fpLegal')?.checked,
+    targetCity: (document.getElementById('fpTargetCity')?.value || '').trim()
   };
   localStorage.setItem(FAMILY_PROFILE_KEY, JSON.stringify(p));
   try {
@@ -149,7 +174,12 @@ function initFamilyProfileForm() {
   set('fpLangLevel', p.langLevel || 'basic');
   set('fpReturnPlan', p.returnPlan || 'maybe');
   set('fpRisk', p.riskTolerance || 3);
+  setCheck('fpVisited', p.visitedCountry);
+  setCheck('fpHealthPlan', p.healthPlan);
+  setCheck('fpLegal', p.legalContact);
+  set('fpTargetCity', p.targetCity || '');
   (p.mustHave || []).forEach(k => setCheck('fpMust_' + k, true));
+  updateRiskLabel();
   updateFamilyProfileSummary();
   if (typeof initEuropeFamilySearch === 'function') initEuropeFamilySearch();
 }

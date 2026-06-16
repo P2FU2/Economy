@@ -183,6 +183,44 @@ const CITY_COST_MULT = {
   default: { default: 1 }
 };
 
+/* Aluguel 1BR centro — capital/principal, USD/mês, referência Numbeo 2024 */
+const RENT_1BR_USD = {
+  PRT: 1100, /* Lisboa — Numbeo 2024 */
+  ESP: 1100, /* Madrid */
+  ITA: 1300, /* Milão centro */
+  IRL: 2100, /* Dublin */
+  DEU: 1400, /* Berlim */
+  FRA: 1400, /* Paris 1BR pequeno */
+  NLD: 1700, /* Amsterdã */
+  BEL: 1200, /* Bruxelas */
+  AUT: 1300, /* Viena */
+  CHE: 2500, /* Zurique */
+  SWE: 1500, /* Estocolmo */
+  NOR: 1500, /* Oslo */
+  DNK: 1500, /* Copenhague */
+  FIN: 1200, /* Helsinque */
+  POL: 700,  /* Varsóvia */
+  CZE: 800,  /* Praga */
+  GRC: 850,  /* Atenas */
+  ROU: 750,  /* Bucareste */
+  HUN: 950,  /* Budapeste */
+  ISL: 1650, /* Reykjavik */
+  LUX: 1800, /* Luxemburgo cidade */
+  GBR: 2100, /* Londres */
+  CAN: 1800, /* Toronto referência */
+  USA: 2200, /* NYC referência */
+  AUS: 1900, /* Sydney referência */
+  BRA: 650   /* São Paulo referência */
+};
+
+const BRL_USD_RATE = 5.5;
+
+function estRentUsd(code) {
+  if (RENT_1BR_USD[code]) return RENT_1BR_USD[code];
+  const d = data[code] || {};
+  return Math.round((d.rent_index || 20) * 35);
+}
+
 const DEFAULT_EXPAT_PROFILE = {
   household: 'couple',
   age: 30,
@@ -248,7 +286,18 @@ function saveExpatProfile(p) {
 function pickBestVisaPath(code, profile) {
   const visa = getExpatVisaData(code);
   const paths = visa.paths.slice();
-  if (profile.euCitizen) {
+  if (profile.citizenshipPath === 'ita_ancestry' && code === 'ITA' && !profile.euCitizen) {
+    return {
+      id: 'citizenship_judicial',
+      label: 'Cidadania judicial (ascendência)',
+      months: 18,
+      costUsd: 8000,
+      fit: 82,
+      reason: 'Processo via comune/tribunal — prazo típico 12–24 meses',
+      next: 'Reunir documentos ancestrais + traduções + advogado italiano'
+    };
+  }
+  if (profile.citizenshipPath === 'eu_citizen' || profile.euCitizen) {
     const eu = paths.find(p => p.euOnly);
     if (eu) return { ...eu, fit: 98, reason: 'Cidadania UE — direito de residência sem visto de longa duração' };
   }
@@ -326,6 +375,23 @@ function calcReversibilityScore(code, profile) {
 /* Trade-offs estáticos por país (filtrados por perfil em world-simulator.js) */
 const COUNTRY_TRADEOFFS = {
   PRT: {
+    pros: [
+      'Idioma: português idêntico — zero barreira de comunicação',
+      'Custo ~$3.000/mês (casal) vs ~$8.000 em SP — economia significativa',
+      { text: 'D7 disponível para renda remota: visto em 2–4 meses', se: 'tipo_renda_remoto' },
+      'Segurança muito superior ao Brasil',
+      'Comunidade brasileira grande (~220k) em Lisboa/Porto',
+      { text: 'Cidadania UE em 5 anos como residente legal', se: 'eu_cidadao' },
+      'Clima ameno comparado ao Norte da Europa'
+    ],
+    cons: [
+      'Salário local TI: €1.800–2.500/mês — 50% abaixo se trabalhar localmente',
+      'Habitação em Lisboa: crise de oferta, aluguel subiu 80% em 5 anos',
+      { text: 'NHR alterado em 2024: condições mais restritas para novos entrantes', se: 'tipo_renda_remoto' },
+      'Inverno chuvoso e frio (out–mar), diferente de SP',
+      'País pequeno: menos escala para negócios grandes',
+      'Saturação de brasileiros em Lisboa dificulta integração com locais'
+    ],
     gains: [
       'Português nativo — barreira linguística mínima',
       'Custo de vida 40–50% abaixo do Norte da Europa',
@@ -344,6 +410,24 @@ const COUNTRY_TRADEOFFS = {
     ]
   },
   ITA: {
+    pros: [
+      { text: 'Cidadania italiana por ascendência: direito imediato, sem visto de longa duração', se: 'ascendencia_ita' },
+      { text: 'Flat tax / impatriati sobre renda estrangeira (condições)', se: 'tipo_renda_empresario' },
+      'SSN: saúde pública universal gratuita',
+      'Livre circulação em 27 países da UE com passaporte italiano',
+      'Italiano acessível: B1 em 10–12 meses vindo do português',
+      'Qualidade de vida, gastronomia e cultura (especialmente fora de Milão)',
+      'Segurança urbana superior ao Brasil'
+    ],
+    cons: [
+      'Burocracia entre as piores da Europa — lenta, tudo em italiano',
+      { text: 'Processo de cidadania judicial: 12–24 meses, custo $5–10k', se: 'ascendencia_ita' },
+      'Custo Milão: ~40% acima de Lisboa para o mesmo perfil',
+      'Mercado de trabalho fraco: desemprego jovens 20%+',
+      'Inverno pesado no norte (nov–mar), cinza e frio',
+      { text: 'IRPEF até 43% sem regime especial — exige planejamento fiscal', se: 'tipo_renda_empresario' },
+      'Rede profissional reconstruída do zero no ano 1'
+    ],
     gains: [
       'Italiano próximo ao português — autonomia linguística em meses',
       'SNS universal gratuito — excelente para família',
@@ -459,6 +543,19 @@ const COUNTRY_TRADEOFFS = {
     ]
   },
   default: {
+    pros: [
+      'Acesso ao mercado europeu e sistema público de saúde',
+      'Segurança e estabilidade institucional superiores ao BR',
+      'Mobilidade Schengen com residência válida',
+      'Tratado fiscal BR na maioria dos países UE'
+    ],
+    cons: [
+      'Barreira linguística e burocrática no primeiro ano',
+      'Custo de adaptação subestimado (tempo, dinheiro, energia)',
+      'Distância do Brasil — visitas caras e raras',
+      'Rede profissional e social reconstruída do zero',
+      { text: 'Renda em BRL exposta a risco cambial', se: 'renda_brl' }
+    ],
     gains: [
       'Acesso ao mercado europeu e sistema público de saúde',
       'Segurança e estabilidade institucional superiores ao BR',
@@ -477,30 +574,52 @@ const COUNTRY_TRADEOFFS = {
 
 const ADAPTATION_PHASES = {
   PRT: [
-    { range: 'Mês 1–3', title: 'Euforia + burocracia', desc: 'NIF, conta bancária, AIMA/CRUE, seguro saúde, busca de moradia. Custo alto, produtividade baixa.' },
-    { range: 'Mês 3–9', title: 'Choque cultural leve', desc: 'Diferenças sutis PT-BR vs. PT-PT, mercado de trabalho local limitado, sazonalidade de amizades.' },
-    { range: 'Mês 9–18', title: 'Estabilização', desc: 'Rotina, SNS ativo, rede de expats + locais, português pleno no dia a dia.' },
-    { range: 'Mês 18+', title: 'Integração', desc: 'Decisão informada: ficar, mudar de cidade ou voltar — com dados reais de custo e renda.' }
+    { range: 'Meses 1–3', title: 'Euforia + burocracia', desc: 'Alta motivação, NIF, conta, AIMA, moradia, seguro. Custo alto de setup. Produtividade baixa.' },
+    { range: 'Meses 3–9', title: 'Choque de realidade', desc: 'Diferenças PT-BR vs PT-PT, saudade, rede ainda fraca. Fase de maior risco de desistência.' },
+    { range: 'Meses 9–18', title: 'Estabilização', desc: 'Rotina formada, português pleno, primeiras amizades locais. Custo normaliza.' },
+    { range: 'Mês 18+', title: 'Integração real', desc: 'Decisão informada de ficar ou não — com dados reais, não expectativas.' }
   ],
   ITA: [
-    { range: 'Mês 1–3', title: 'Euforia + burocracia intensa', desc: 'Codice fiscale, Comune, tessera sanitaria, conta, contrato de aluguel. Tudo em italiano.' },
-    { range: 'Mês 3–9', title: 'Choque cultural + idioma', desc: 'Fase mais difícil — burocracia surpreende, italiano ainda trava tarefas simples, solidão possível.' },
-    { range: 'Mês 9–18', title: 'Estabilização', desc: 'Rotina, italiano funcional (B1), rede começando, regime fiscal definido.' },
-    { range: 'Mês 18+', title: 'Integração', desc: 'Decisão de ficar baseada em experiência real — não em expectativa de Instagram.' }
+    { range: 'Meses 1–3', title: 'Euforia + burocracia', desc: 'Codice fiscale, Comune, tessera sanitaria, conta, moradia. Tudo em italiano. Custo alto, produtividade baixa.' },
+    { range: 'Meses 3–9', title: 'Choque de realidade', desc: 'Idioma trava tarefas simples. Burocracia surpreende. Saudade intensa. Maior taxa de desistência.' },
+    { range: 'Meses 9–18', title: 'Estabilização', desc: 'Rotina formada. Italiano funcional (B1). Rede profissional começando.' },
+    { range: 'Mês 18+', title: 'Integração real', desc: 'Decisão de ficar baseada em experiência real — integração social e profissional sólida ou retorno.' }
   ],
   ESP: [
-    { range: 'Mês 1–3', title: 'Arranque administrativo', desc: 'NIE, empadronamiento, seguridad social, abertura de conta, moradia.' },
-    { range: 'Mês 3–9', title: 'Adaptação linguística', desc: 'Espanhol cotidiano vs. português — diferenças regionais, mercado de trabalho local.' },
-    { range: 'Mês 9–18', title: 'Estabilização', desc: 'Rede social, rotina de saúde pública, custo de vida real conhecido.' },
-    { range: 'Mês 18+', title: 'Integração', desc: 'Avaliação honesta de permanência — especialmente se renda é remota em BRL.' }
+    { range: 'Meses 1–3', title: 'Euforia + burocracia', desc: 'NIE, empadronamiento, seguridad social, moradia. Setup caro e lento.' },
+    { range: 'Meses 3–9', title: 'Choque de realidade', desc: 'Espanhol cotidiano vs expectativa. Mercado local competitivo. Saudade e solidão possíveis.' },
+    { range: 'Meses 9–18', title: 'Estabilização', desc: 'Rotina, idioma funcional, rede inicial, custo real conhecido.' },
+    { range: 'Mês 18+', title: 'Integração real', desc: 'Decisão informada com base em dados reais de custo e renda.' }
   ],
   default: [
-    { range: 'Mês 1–3', title: 'Euforia + burocracia', desc: 'Documentos, moradia, saúde, conta bancária — custo e stress acima do esperado.' },
-    { range: 'Mês 3–9', title: 'Choque cultural', desc: 'Idioma, solidão, burocracia repetida — maior risco de desistência.' },
-    { range: 'Mês 9–18', title: 'Estabilização', desc: 'Rotina formada, idioma funcional, rede inicial.' },
-    { range: 'Mês 18+', title: 'Integração', desc: 'Decisão de ficar ou voltar com base em dados, não expectativas.' }
+    { range: 'Meses 1–3', title: 'Euforia + burocracia', desc: 'Documentos, moradia, saúde, conta bancária — custo e stress acima do esperado.' },
+    { range: 'Meses 3–9', title: 'Choque de realidade', desc: 'Idioma, solidão, burocracia repetida — maior risco de desistência.' },
+    { range: 'Meses 9–18', title: 'Estabilização', desc: 'Rotina formada, idioma funcional, rede inicial.' },
+    { range: 'Mês 18+', title: 'Integração real', desc: 'Decisão de ficar ou voltar com base em dados, não expectativas.' }
   ]
 };
+
+function resolveTradeoffList(items, profile) {
+  if (!items || !items.length) return [];
+  const out = [];
+  items.forEach(item => {
+    let text = '';
+    let show = true;
+    if (typeof item === 'string') text = item;
+    else if (item && item.text) {
+      text = item.text;
+      if (item.se === 'tipo_renda_remoto') show = ['remote', 'entrepreneur', 'passive'].includes(profile.incomeType);
+      else if (item.se === 'tipo_renda_empresario') show = profile.incomeType === 'entrepreneur';
+      else if (item.se === 'renda_eur') show = profile.incomeCurrency === 'EUR';
+      else if (item.se === 'renda_brl') show = profile.incomeCurrency === 'BRL';
+      else if (item.se === 'ascendencia_ita') show = profile.citizenshipPath === 'ita_ancestry';
+      else if (item.se === 'eu_cidadao') show = profile.euCitizen || profile.citizenshipPath === 'eu_citizen';
+      else if (item.if && typeof item.if === 'function') show = item.if(profile);
+    }
+    if (show && text) out.push(text);
+  });
+  return out.slice(0, 7);
+}
 
 function getCountryTradeoffs(code) {
   return COUNTRY_TRADEOFFS[code] || COUNTRY_TRADEOFFS.default;

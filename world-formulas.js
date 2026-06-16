@@ -299,6 +299,7 @@ function buildFormulas() {
 }
 
 function estRent(code) {
+  if (typeof estRentUsd === 'function') return estRentUsd(code);
   const d = data[code] || {};
   return (d.rent_index || 20) * 18;
 }
@@ -537,40 +538,52 @@ function renderFamilyProfile() {
   const top3 = ranked.slice(0, 3);
   const brCost = profile?.costSpUsd || estMonthlyLivingHousehold('BRA', profile);
 
-  let html = '<p class="muted-text sim-legend" style="font-size:.78rem;margin-bottom:.75rem">Comparação base: <strong>Brasil (SP)</strong> — custo declarado $' + fmtNum(brCost, 0) + '/mês. Índices de custo usam escala NYC=100. Aluguéis em USD estimados (cidade principal).</p>';
+  let html = '<p class="muted-text sim-legend" style="font-size:.78rem;margin-bottom:.75rem">Comparação base: <strong>Brasil (SP)</strong> — custo declarado $' + fmtNum(brCost, 0) + '/mês. Aluguéis: 1BR centro capital, USD, Numbeo 2024.</p>';
 
   html += '<div class="grid grid-3 stagger-children" style="margin-top:.5rem">';
   top3.forEach((x, i) => {
     const rank = i === 0 ? '#1' : i === 1 ? '#2' : '#3';
-    const interp = x.breakdown ? x.breakdown.interpretation : scoreInterpretation(x.score);
+    const interp = x.breakdown ? x.breakdown.interpretation : (typeof scoreInterpretation === 'function' ? scoreInterpretation(x.score) : '');
     const destCost = typeof estMonthlyLivingHousehold === 'function' ? estMonthlyLivingHousehold(x.c.code, profile) : 0;
     const delta = destCost - brCost;
     const v = x.verdict || {};
+    const extras = typeof buildTop3CardExtras === 'function' ? buildTop3CardExtras(x.c.code, profile) : '';
+    const badges = extras.includes('<details') ? extras.slice(0, extras.indexOf('<details')) : extras;
+    const tradeoffs = extras.includes('<details') ? extras.slice(extras.indexOf('<details')) : '';
     html += '<div class="card flag-card reloc-card sim-top-card"><h3>' + rank + ' ' + countryCell(x.c.code, 'md') + '</h3>';
     html += '<div class="sim-verdict-inline sim-verdict-' + (v.level || 'yellow') + '">' + (v.icon || '🟡') + ' ' + (v.label || interp) + '</div>';
+    if (badges) html += '<div class="sim-card-badges">' + badges + '</div>';
     html += '<div class="kpi" style="font-size:1.4rem">' + x.score + '/100</div>';
     html += '<p style="font-size:.78rem;color:var(--muted);margin-top:.25rem">' + interp + '</p>';
     html += '<p style="font-size:.82rem;color:var(--muted);margin-top:.5rem">Custo est.: <strong>$' + fmtNum(destCost, 0) + '/mês</strong> (' + (delta > 0 ? '+' : '') + fmtNum(delta, 0) + ' vs SP)<br>';
-    html += 'Idioma ' + fmtNum(x.lang, 0) + '/100 · Emprego ' + fmtNum(100 - x.job, 0) + '/100 · Saúde ' + fmtNum(x.d.healthcare, 0) + '/100</p></div>';
+    html += 'Aluguel 1BR: $' + fmtNum(estRent(x.c.code), 0) + ' · Idioma ' + fmtNum(x.lang, 0) + '/100 · Saúde ' + fmtNum(x.d.healthcare, 0) + '/100</p>';
+    if (tradeoffs) html += tradeoffs;
+    html += '</div>';
   });
   html += '</div>';
 
   if (top) {
     html += '<div class="conclusion-block" style="margin-top:1rem"><h4>Recomendação interpretada</h4>';
     html += '<p style="font-size:.9rem"><strong>1º ' + top.c.name + '</strong> — ' + (top.verdict ? top.verdict.line : familyTopText(top, estMonthlyCost(top.c.code) + estRent(top.c.code))) + '</p>';
-    html += '<p style="font-size:.85rem;margin-top:.5rem;color:var(--muted)">Clique num país na tabela ou busque acima para ver delta vs Brasil, trade-offs, curva de adaptação e prontidão.</p></div>';
+    html += '<p style="font-size:.85rem;margin-top:.5rem;color:var(--muted)">↓ Clique num país na tabela para abrir a <strong>análise detalhada</strong> (delta, trade-offs, curva 24m, prontidão) logo abaixo.</p></div>';
   }
 
   const reserveTip = typeof calcReserve9m === 'function' ? calcReserve9m(top?.c.code || 'PRT', profile).explain : '9 meses × custo mensal estimado do perfil.';
   html += '<div class="card" style="margin-top:1rem"><h3>Ranking completo — Europa <span style="font-weight:400;color:var(--muted);font-size:.78rem">(' + (typeof familyProfileLabel === 'function' ? familyProfileLabel(profile) : 'seu perfil') + ')</span></h3><div class="table-wrap"><table><thead><tr>';
-  html += '<th>#</th><th>País</th><th>Score</th><th>Veredito</th><th>Idioma</th><th>Emprego</th><th title="Índice 0–100, Nova York = 100">Custo idx</th>';
-  html += '<th title="Aluguel 1BR estimado em USD/mês, cidade principal">Aluguel 1BR (USD)</th><th>Saúde</th><th title="' + reserveTip.replace(/"/g, '&quot;') + '">Reserva 9m ⓘ</th></tr></thead><tbody>';
+  html += '<th>#</th><th>País</th><th>Score</th><th>Veredito</th><th>Entrada</th><th>Impostos</th><th>Idioma</th><th>Emprego</th><th title="Índice de custo de vida — Nova York = 100">Custo (NYC=100)</th>';
+  html += '<th title="1BR centro capital, USD, Numbeo 2024">Aluguel 1BR (USD)</th><th>Saúde</th><th title="' + reserveTip.replace(/"/g, '&quot;') + '">Reserva 9m ⓘ</th></tr></thead><tbody>';
   ranked.forEach((x, i) => {
     const res = typeof calcReserve9m === 'function' ? calcReserve9m(x.c.code, profile) : { total: (estMonthlyCost(x.c.code) + estRent(x.c.code)) * 9 * 2 * 0.85 };
     const v = x.verdict || {};
-    html += '<tr data-family-code="' + x.c.code + '" id="family-row-' + x.c.code + '" style="cursor:pointer" onclick="focusFamilyCountryByCode(\'' + x.c.code + '\')"><td>' + (i + 1) + '</td><td>' + countryCell(x.c.code, 'sm', true) + '</td>';
+    const entry = typeof getEntryBadge === 'function' ? getEntryBadge(x.c.code, profile) : { label: '—', cls: '' };
+    const tax = typeof getTaxPct === 'function' ? getTaxPct(x.c.code, profile) : (x.d.tax_burden || 30);
+    const visaWarn = typeof getVisaTimelineWarning === 'function' ? getVisaTimelineWarning(x.c.code, profile) : null;
+    html += '<tr data-family-code="' + x.c.code + '" id="family-row-' + x.c.code + '" class="sim-row-clickable" onclick="focusFamilyCountryByCode(\'' + x.c.code + '\')"><td>' + (i + 1) + '</td><td>' + countryCell(x.c.code, 'sm', true) + '</td>';
     html += '<td><strong>' + x.score + '</strong><div style="font-size:.65rem;color:var(--muted)">' + (x.breakdown ? x.breakdown.interpretation : '') + '</div></td>';
     html += '<td><span class="sim-verdict-dot sim-verdict-' + (v.level || 'yellow') + '">' + (v.icon || '') + '</span></td>';
+    html += '<td><span class="sim-badge ' + entry.cls + '" title="' + (entry.full || entry.label) + '">' + entry.label + '</span>';
+    if (visaWarn) html += ' <span class="sim-cell-warn" title="' + visaWarn.text.replace(/"/g, '&quot;') + '">' + visaWarn.icon + '</span>';
+    html += '</td><td>' + tax + '%</td>';
     html += '<td>' + fmtNum(x.lang, 0) + '</td><td>' + fmtNum(100 - x.job, 0) + '</td>';
     html += '<td>' + fmtNum(x.d.cost_living, 0) + '</td><td>$' + fmtNum(estRent(x.c.code), 0) + '</td><td>' + fmtNum(x.d.healthcare, 0) + '</td>';
     html += '<td>$' + fmtNum(res.total, 0) + '</td></tr>';
@@ -601,24 +614,30 @@ function focusFamilyCountryByCode(code) {
   if (el) {
     const row = el.querySelector('[data-family-code="' + code + '"]');
     if (row) {
-      row.scrollIntoView({ behavior: 'smooth', block: 'center' });
-      row.style.outline = '2px solid var(--c-amber)';
-      setTimeout(() => { row.style.outline = ''; }, 2500);
+      row.classList.add('sim-row-active');
+      setTimeout(() => row.classList.remove('sim-row-active'), 3000);
     }
   }
   const c = getCountry(code);
   const banner = document.getElementById('familyCountryFocus');
   if (banner && c && typeof buildCountryAnalysisHtml === 'function') {
     const profile = typeof getMergedSimProfile === 'function' ? getMergedSimProfile() : getFamilyProfile();
-    banner.innerHTML = '<div class="card sim-country-focus" style="margin-top:1rem;border-left:3px solid var(--c-amber)">' +
-      '<div class="compare-header">' + flagImg(code, 'lg') + '<h3>' + c.name + '</h3></div>' +
-      buildCountryAnalysisHtml(code, profile) + '</div>';
-    banner.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    const visaWarn = typeof getVisaTimelineWarning === 'function' ? getVisaTimelineWarning(code, profile) : null;
+    const curBadge = typeof getCurrencyAdvantage === 'function' ? getCurrencyAdvantage(profile, code) : null;
+    let alertHtml = '';
+    if (visaWarn) alertHtml += '<div class="sim-inline-alert sim-inline-' + visaWarn.level + '">' + visaWarn.icon + ' ' + visaWarn.text + '</div>';
+    if (curBadge && curBadge.show && profile.incomeCurrency === 'EUR') {
+      alertHtml += '<div class="sim-inline-alert sim-inline-good">✓ ' + curBadge.detail + '</div>';
+    }
+    banner.innerHTML = '<div class="card sim-country-focus sim-detail-open" id="simDetailPanel">' +
+      '<div class="sim-detail-header"><span class="sim-detail-label">Análise detalhada</span>' +
+      '<div class="compare-header">' + flagImg(code, 'lg') + '<h3>' + c.name + '</h3></div></div>' +
+      alertHtml + buildCountryAnalysisHtml(code, profile) + '</div>';
+    banner.classList.add('sim-detail-visible');
+    banner.scrollIntoView({ behavior: 'smooth', block: 'start' });
   } else if (banner && c) {
-    const d = data[code] || {};
     const score = calcFamilyEUScore(code, typeof getFamilyProfile === 'function' ? getFamilyProfile() : null);
-    banner.innerHTML = '<div class="card" style="margin-top:1rem;border-left:3px solid var(--c-amber)">' +
-      '<div class="compare-header">' + flagImg(code, 'lg') + '<h3>' + c.name + ' — score ' + score + '/100</h3></div></div>';
+    banner.innerHTML = '<div class="card"><h3>' + c.name + ' — score ' + score + '/100</h3></div>';
   }
 }
 

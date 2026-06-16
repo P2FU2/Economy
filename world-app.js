@@ -371,63 +371,34 @@ function renderQualityTab() {
 function renderRelocation() {
   const sector = document.getElementById('relocSector').value;
   const salary = +document.getElementById('relocSalary').value || 2500;
-  const active = getActiveList().map(c => {
-    const d = data[c.code];
-    const ppp = PPP_FACTOR[c.code] || 0.5;
-    const equivSalary = salary * (ppp / (PPP_FACTOR.BRA || 0.55));
-    const realPower = equivSalary / ((d.cost_living || 50) / 100);
-    const score = calcRelocationScore(c.code, sector);
-    return { c, d, equivSalary, realPower, score, sectorVal: d[sector] || 0 };
-  }).sort((a, b) => b.score - a.score);
-
-  const top = active[0];
-  document.getElementById('relocKpis').innerHTML = [
-    { label: 'Melhor Destino', val: top ? countryCell(top.c.code, 'md') : '—', sub: 'Score ' + (top?.score || 0) },
-    { label: 'Seu Salário Equivalente', val: top ? '$' + fmtNum(top.equivSalary, 0) : '—', sub: 'Ajustado PPP' },
-    { label: 'Poder de Compra Real', val: top ? '$' + fmtNum(top.realPower, 0) : '—', sub: 'Após custo de vida' },
-    { label: 'Demanda Setorial', val: top ? fmtNum(top.sectorVal, 0) + '/100' : '—', sub: document.getElementById('relocSector').selectedOptions[0].text }
-  ].map(k => `<div class="card reloc-card"><h3>${k.label}</h3><div class="kpi" style="font-size:1.3rem">${k.val}<small>${k.sub}</small></div></div>`).join('');
-
-  const rows = active.map((x, i) => `<tr>
-    <td>${i + 1}</td>
-    <td>${countryCell(x.c.code, 'sm', true)}</td>
-    <td><strong>${x.score}</strong><div class="score-bar"><div style="width:${x.score}%"></div></div></td>
-    <td>$${fmtNum(x.d.avg_salary, 0)}</td>
-    <td>$${fmtNum(x.equivSalary, 0)}</td>
-    <td>${fmtNum(x.d.cost_living, 0)}</td>
-    <td>${fmtNum(x.d.rent_index, 0)}</td>
-    <td>${fmtNum(x.sectorVal, 0)}</td>
-    <td>${fmtNum(x.d.safety, 0)}</td>
-    <td>${fmtNum(x.d.happiness, 2)}</td>
-    <td>${fmtNum(x.d.immigration, 0)}</td>
-    <td>${fmtNum(x.d.tax_burden)}%</td>
-  </tr>`).join('');
-
-  document.getElementById('relocTable').innerHTML = `<table><thead><tr>
-    <th>#</th><th>País</th><th>Score</th><th>Salário Médio</th><th>Seu Salário PPP</th>
-    <th>Custo Vida</th><th>Aluguel</th><th>Demanda</th><th>Segurança</th><th>Felicidade</th><th>Imigração</th><th>Impostos</th>
-  </tr></thead><tbody>${rows}</tbody></table>`;
-
-  const top10 = active.slice(0, 10);
-  const ctx = document.getElementById('chartReloc');
-  if (charts.reloc) charts.reloc.destroy();
-  charts.reloc = new Chart(ctx, {
-    type: 'bar',
-    data: {
-      labels: top10.map(x => x.c.name),
-      datasets: [{ label: 'Score Mudança', data: top10.map(x => x.score), backgroundColor: '#9b7ec8', borderRadius: 4 }]
-    },
-    options: chartOpts(false)
-  });
-
+  if (typeof buildRelocRows !== 'function') {
+    /* fallback legado */
+    const active = getActiveList().map(c => {
+      const d = data[c.code];
+      const ppp = PPP_FACTOR[c.code] || 0.5;
+      const equivSalary = salary * (ppp / (PPP_FACTOR.BRA || 0.55));
+      const tax = (d.tax_burden || 30) / 100;
+      const net = equivSalary * (1 - tax);
+      const cost = estMonthlyCost(c.code) + estRent(c.code);
+      return { c, d, equivSalary, netSalary: net, surplus: net - cost, score: calcRelocationScore(c.code, sector), sectorVal: d[sector] || 0, taxPct: Math.round(tax * 100), monthlyCost: cost };
+    }).sort((a, b) => b.score - a.score);
+    relocRowsCache = active;
+    renderRelocationTable(active);
+    renderRelocationKpis(active, salary, sector);
+    renderRelocationChart(active);
+    if (active[0]) { relocSelectedCode = active[0].c.code; renderRelocDetail(active[0].c.code); }
+    return;
+  }
+  const rows = buildRelocRows(salary, sector);
+  rows.sort((a, b) => b.score - a.score);
+  relocRowsCache = rows;
+  renderRelocationKpis(rows, salary, sector);
+  renderRelocationTable(rows);
+  renderRelocationChart(rows);
+  const top = sortRelocRows(rows, 'score', 'desc')[0];
   if (top) {
-    document.getElementById('relocDetail').innerHTML = `
-      <div class="compare-header">${flagImg(top.c.code, 'lg')}<h3>Análise — ${top.c.name}</h3></div>
-      <p style="margin:.5rem 0;font-size:.9rem">Com salário de <strong>$${fmtNum(salary, 0)}/mês</strong>, seu poder de compra equivalente seria <strong>$${fmtNum(top.equivSalary, 0)}</strong> (PPP).</p>
-      <p style="font-size:.9rem">Após custo de vida (índice ${fmtNum(top.d.cost_living, 0)}), poder real estimado: <strong>$${fmtNum(top.realPower, 0)}/mês</strong>.</p>
-      <p style="font-size:.85rem;color:var(--muted);margin-top:.75rem">IDH: ${fmtNum(top.d.hdi, 3)} · Felicidade: ${fmtNum(top.d.happiness, 2)} · Desemprego: ${fmtNum(top.d.unemployment)}% · Saúde: ${fmtNum(top.d.healthcare, 0)}/100</p>
-      <p style="font-size:.85rem;color:var(--muted)">Emprego: Serviços ${fmtNum(top.d.emp_services)}% · Indústria ${fmtNum(top.d.emp_industry)}% · Demanda ${document.getElementById('relocSector').selectedOptions[0].text}: ${fmtNum(top.sectorVal, 0)}/100</p>
-    `;
+    relocSelectedCode = top.c.code;
+    renderRelocDetail(top.c.code);
   }
 }
 

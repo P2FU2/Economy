@@ -313,7 +313,12 @@ function initCountrySearch(inputId, selectId, onPick, opts) {
   input.setAttribute('role', 'combobox');
   input.setAttribute('aria-autocomplete', 'list');
   input.setAttribute('aria-expanded', 'false');
-  const getPool = () => input._countrySearchPool || COUNTRIES;
+  const getPool = () => {
+    if (input.dataset.poolFilter === 'europe') {
+      return COUNTRIES.filter(c => c.region === 'europe' && c.code !== 'RUS' && c.code !== 'GBR');
+    }
+    return input._countrySearchPool || COUNTRIES;
+  };
   const listId = inputId + 'Dropdown';
   let list = document.getElementById(listId);
   if (!list) {

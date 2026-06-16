@@ -135,6 +135,7 @@ function getFinancialViability(code, profile) {
   let explain = 'Renda líquida est. $' + fmtNum(net, 0) + '/mês cobre ' + fmtNum(ratio, 1) + '× o custo ($' + fmtNum(monthly, 0) + '/mês) — ' + ratioLabel + '.';
   explain += ' Reserva: ' + fmtNum(monthsCover, 1) + ' meses de runway' + (monthsCover >= 12 ? ' (ideal).' : monthsCover >= 9 ? ' (ok, ideal 12+).' : ' (abaixo do recomendado).');
   if (profile.incomeCurrency === 'BRL') explain += ' Renda em BRL — exposta a risco cambial (~20% de variação possível).';
+  if (profile.incomeCurrency === 'EUR') explain += ' Renda em EUR — sem risco cambial na zona euro (vantagem).';
   return { score, ratio, net, monthly, monthsCover, reserve, explain, ratioLabel };
 }
 
@@ -208,22 +209,27 @@ function getExpatVerdict(code, profile) {
 
 function filterTradeoffsByProfile(code, profile) {
   const base = getCountryTradeoffs(code);
-  const gains = [...base.gains];
-  const losses = [...base.losses];
-  if (profile.incomeCurrency === 'BRL') {
+  profile = profile || getMergedSimProfile();
+  let gains = base.pros ? resolveTradeoffList(base.pros, profile) : [...(base.gains || [])];
+  let losses = base.cons ? resolveTradeoffList(base.cons, profile) : [...(base.losses || [])];
+  if (!gains.length && base.gains) gains = [...base.gains];
+  if (!losses.length && base.losses) losses = [...base.losses];
+  if (profile.incomeCurrency === 'BRL' && !losses.some(l => l.includes('BRL'))) {
     losses.push('Renda em BRL: queda de 20% no câmbio = queda de 20% no poder de compra na Europa');
   }
   if (profile.incomeType === 'entrepreneur' || profile.incomeType === 'remote') {
     const tax = getExpatTax(code);
-    if (tax.special) gains.push('Regime especial: ' + tax.special.name + ' — ' + tax.special.note);
+    if (tax.special && !gains.some(g => g.includes(tax.special.name))) {
+      gains.push('Regime especial: ' + tax.special.name + ' — ' + tax.special.note);
+    }
   }
   if (profile.incomeType === 'clt_br') {
     losses.push('CLT no Brasil: perder emprego local = perder renda ao mudar sem oferta no destino');
   }
-  if (profile.langLevel === 'none' || profile.langLevel === 'basic') {
+  if ((profile.langLevel === 'none' || profile.langLevel === 'basic') && !losses.some(l => l.includes('Idioma'))) {
     losses.push('Idioma atual ' + (profile.langLevel === 'none' ? 'zero' : 'básico') + ': autonomia em ~' + langMonthsToB1(profile, code) + ' meses');
   }
-  if (profile.citizenshipPath === 'ita_ancestry' && code === 'ITA') {
+  if (profile.citizenshipPath === 'ita_ancestry' && code === 'ITA' && !gains.some(g => g.includes('ascendência'))) {
     gains.unshift('Ascendência italiana: caminho de cidadania UE via processo judicial (12–24 meses)');
   }
   return { gains: gains.slice(0, 7), losses: losses.slice(0, 7) };
@@ -234,14 +240,14 @@ function getReadinessChecklist(code, profile) {
   const fin = getFinancialViability(code, profile);
   const visa = typeof pickBestVisaPath === 'function' ? pickBestVisaPath(code, profile) : null;
   const items = [
-    { ok: fin.monthsCover >= 9, label: 'Reserva ≥ 9 meses', miss: 'reserva financeira (+' + fmtNum(Math.max(0, 9 - fin.monthsCover), 0) + ' meses)' },
-    { ok: visa && visa.months <= profile.timelineMonths, label: 'Visto viável no prazo', miss: 'ajustar prazo ou caminho de visto' },
-    { ok: profile.costSpUsd > 0, label: 'Custo de vida SP definido', miss: 'informar gasto mensal em SP' },
-    { ok: profile.monthlyIncome > 0, label: 'Renda mensal informada', miss: 'informar renda' },
-    { ok: profile.langLevel !== 'none' || (LANG_EASE[code] || 0) >= 80, label: 'Idioma ou destino favorável', miss: 'iniciar estudo de idioma' },
-    { ok: fin.ratio >= 1.0, label: 'Renda cobre custo destino', miss: 'aumentar renda ou escolher destino mais barato' },
-    { ok: profile.returnPlan !== 'definitive' || profile.reserve >= fin.monthly * 6, label: 'Plano de retorno/reforço', miss: 'reserva extra se mudança definitiva' },
-    { ok: profile.euCitizen || profile.citizenshipPath !== 'br_only', label: 'Caminho de entrada mapeado', miss: 'definir tipo de visto/cidadania' }
+    { ok: fin.monthsCover >= 12, label: 'Reserva para 12+ meses no destino', miss: 'reserva financeira (ideal 12+ meses, tem ' + fmtNum(fin.monthsCover, 1) + ')' },
+    { ok: visa && visa.months <= profile.timelineMonths, label: 'Visto viável no prazo declarado', miss: 'ajustar prazo ou caminho de visto' },
+    { ok: fin.ratio >= 1.3, label: 'Renda cobre custo com margem (≥1,3×)', miss: 'aumentar renda ou reduzir custo destino' },
+    { ok: !!profile.visitedCountry, label: 'Já visitou o país', miss: 'visitar o país antes de decidir (recomendado)' },
+    { ok: !!profile.healthPlan, label: 'Plano de saúde para a transição', miss: 'definir seguro saúde para os primeiros meses' },
+    { ok: !!profile.legalContact, label: 'Contador/advogado no destino identificado', miss: 'identificar profissional legal/fiscal local' },
+    { ok: profile.costSpUsd > 0, label: 'Sabe o custo de vida real (SP informado)', miss: 'informar gasto mensal em SP' },
+    { ok: !!(profile.targetCity && profile.targetCity.trim()), label: 'Cidade específica definida (não só país)', miss: 'definir cidade alvo, não só o país' }
   ];
   const done = items.filter(i => i.ok).length;
   const missing = items.filter(i => !i.ok).map(i => i.miss);
@@ -333,10 +339,11 @@ function buildCountryAnalysisHtml(code, profile) {
 
   h += '<div class="sim-readiness"><h4>Prontidão para decidir: ' + readiness.pct + '%</h4><ul class="sim-checklist">';
   readiness.items.forEach(i => {
-    h += '<li class="' + (i.ok ? 'ok' : 'miss') + '">' + (i.ok ? '✓' : '✗') + ' ' + i.label + '</li>';
+    h += '<li class="' + (i.ok ? 'ok' : 'miss') + '">' + (i.ok ? '[sim]' : '[pendente]') + ' ' + i.label + '</li>';
   });
   h += '</ul>';
   if (readiness.missing.length) h += '<p class="muted-text" style="font-size:.8rem">O que falta: ' + readiness.missing.slice(0, 3).join(', ') + '.</p>';
+  h += '<p class="muted-text" style="font-size:.75rem;margin-top:.35rem">Meta-decisão: você está ' + readiness.pct + '% pronto para tomar essa decisão com segurança.</p>';
   h += '</div>';
 
   h += '<div class="sim-actions"><button type="button" class="btn secondary" onclick="openExpatDecision(\'' + code + '\')">Análise completa (visto, fiscal, PDF)</button>';
@@ -369,5 +376,89 @@ function exportSimToPlanner(code) {
 }
 
 function initEuropeFamilySearch() {
+  const input = document.getElementById('familySearch');
+  if (input) {
+    input.dataset.poolFilter = 'europe';
+    input._countrySearchPool = EUROPE_COUNTRIES();
+  }
   initCountrySearch('familySearch', null, focusFamilyCountryByCode, { pool: EUROPE_COUNTRIES() });
+}
+
+function getEntryBadge(code, profile) {
+  profile = profile || getMergedSimProfile();
+  if (profile.euCitizen || profile.citizenshipPath === 'eu_citizen') {
+    return { label: 'Direto UE', cls: 'sim-badge-green', months: 1 };
+  }
+  if (profile.citizenshipPath === 'ita_ancestry' && code === 'ITA') {
+    return { label: 'Cidadania', cls: 'sim-badge-amber', months: 18 };
+  }
+  const visa = typeof pickBestVisaPath === 'function' ? pickBestVisaPath(code, profile) : null;
+  if (!visa) return { label: '—', cls: '', months: 99 };
+  const short = {
+    'Visto D7 (renda passiva)': 'D7',
+    'Visto D8 (nômade digital)': 'D8',
+    'Visto de eleitor (renda passiva)': 'Eleitor',
+    'Visto nômade digital': 'Nômade',
+    'Visto teletrabalho': 'Teletrabalho',
+    'Visado no lucrativo': 'No lucrativo',
+    'Nulla osta / trabalho': 'Trabalho',
+    'Visto de trabalho': 'Trabalho',
+    'Cidadania / residência UE': 'Direto UE'
+  };
+  const label = short[visa.label] || (visa.label.length > 12 ? visa.label.split(' ')[1] || visa.label.slice(0, 10) : visa.label);
+  const ok = visa.months <= (profile.timelineMonths || 12);
+  return { label, cls: ok ? 'sim-badge-green' : 'sim-badge-amber', months: visa.months, full: visa.label };
+}
+
+function getTaxPct(code, profile) {
+  profile = profile || getMergedSimProfile();
+  if (typeof effectiveTaxRate !== 'function') return (data[code]?.tax_burden || 30);
+  return Math.round(effectiveTaxRate(code, profile) * 100);
+}
+
+function getVisaTimelineWarning(code, profile) {
+  profile = profile || getMergedSimProfile();
+  const badge = getEntryBadge(code, profile);
+  const months = badge.months;
+  const prazo = profile.timelineMonths || 12;
+  if (months > prazo) {
+    return { level: 'warn', icon: '⚠️', text: 'Prazo visto ~' + months + 'm excede sua meta de ' + prazo + 'm — considere outro caminho ou estender prazo.' };
+  }
+  if (months >= prazo * 0.75 && months <= prazo) {
+    return { level: 'caution', icon: '⚡', text: 'Prazo visto ~' + months + 'm no limite da sua meta (' + prazo + 'm) — margem apertada.' };
+  }
+  return null;
+}
+
+function getCurrencyAdvantage(profile, code) {
+  profile = profile || getMergedSimProfile();
+  if (profile.incomeCurrency === 'EUR') {
+    return { show: true, text: 'Sem risco cambial', detail: 'Renda em EUR — vantagem na zona euro, sem exposição BRL→EUR.' };
+  }
+  if (profile.incomeCurrency === 'BRL') {
+    return { show: true, text: 'Risco cambial BRL', detail: 'Renda em BRL — queda de 20% no câmbio reduz poder de compra na Europa proporcionalmente.', cls: 'sim-badge-amber' };
+  }
+  return { show: false };
+}
+
+function buildTop3CardExtras(code, profile) {
+  const trade = filterTradeoffsByProfile(code, profile);
+  const visaWarn = getVisaTimelineWarning(code, profile);
+  const curBadge = getCurrencyAdvantage(profile, code);
+  let h = '';
+  if (curBadge.show && profile.incomeCurrency === 'EUR') {
+    h += '<span class="sim-badge sim-badge-green">' + curBadge.text + '</span> ';
+  } else if (curBadge.show && profile.incomeCurrency === 'BRL') {
+    h += '<span class="sim-badge sim-badge-amber">' + curBadge.text + '</span> ';
+  }
+  if (visaWarn) {
+    h += '<div class="sim-inline-alert sim-inline-' + visaWarn.level + '">' + visaWarn.icon + ' ' + visaWarn.text + '</div>';
+  }
+  h += '<details class="sim-card-tradeoffs"><summary>Ver trade-offs</summary>';
+  h += '<div class="sim-mini-trade"><strong>Ganha:</strong><ul>';
+  trade.gains.slice(0, 3).forEach(g => { h += '<li>' + g + '</li>'; });
+  h += '</ul><strong>Perde:</strong><ul>';
+  trade.losses.slice(0, 3).forEach(l => { h += '<li>' + l + '</li>'; });
+  h += '</ul></div></details>';
+  return h;
 }

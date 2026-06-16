@@ -274,30 +274,69 @@ function makeBarChart(canvasId, key, label, color, limit = 15, asc = false) {
   setChartAria(canvasId, 'Gráfico de barras: ' + label + ' — ' + active.length + ' países' + (top ? ', líder: ' + top.name : ''));
 }
 
-function chartOpts(legend = true) {
+function chartZoomPlugin(zoomMode = 'x') {
+  if (typeof Chart === 'undefined' || !Chart.registry?.plugins?.get('zoom')) return {};
+  return {
+    zoom: {
+      pan: {
+        enabled: true,
+        mode: zoomMode,
+        modifierKey: 'shift'
+      },
+      zoom: {
+        wheel: { enabled: true, speed: 0.08 },
+        pinch: { enabled: true },
+        drag: { enabled: false },
+        mode: zoomMode
+      },
+      limits: {
+        x: { minRange: 3 },
+        y: { minRange: zoomMode === 'xy' ? 3 : undefined }
+      }
+    }
+  };
+}
+
+function chartOpts(legend = true, enableZoom = false, zoomMode = 'x') {
+  const plugins = {
+    legend: { display: legend, labels: { color: '#9a9a9a', font: { size: 11, family: "'Inter','Segoe UI',sans-serif" }, padding: 14, usePointStyle: true } },
+    tooltip: {
+      backgroundColor: '#1a1a1a',
+      borderColor: '#3a3a3a',
+      borderWidth: 1,
+      titleColor: '#ececec',
+      bodyColor: '#9a9a9a',
+      padding: 10,
+      cornerRadius: 6
+    }
+  };
+  if (enableZoom) Object.assign(plugins, chartZoomPlugin(zoomMode));
   return {
     responsive: true,
     maintainAspectRatio: false,
     animation: { duration: 600, easing: 'easeOutQuart' },
     interaction: { mode: 'index', intersect: false, axis: 'x' },
     events: ['mousemove', 'mouseout', 'click', 'touchstart', 'touchmove'],
-    plugins: {
-      legend: { display: legend, labels: { color: '#9a9a9a', font: { size: 11, family: "'Inter','Segoe UI',sans-serif" }, padding: 14, usePointStyle: true } },
-      tooltip: {
-        backgroundColor: '#1a1a1a',
-        borderColor: '#3a3a3a',
-        borderWidth: 1,
-        titleColor: '#ececec',
-        bodyColor: '#9a9a9a',
-        padding: 10,
-        cornerRadius: 6
-      }
-    },
+    plugins,
     scales: {
       x: { ticks: { color: '#9a9a9a', font: { size: 9 } }, grid: { display: false } },
       y: { ticks: { color: '#9a9a9a' }, grid: { color: 'rgba(46,46,46,0.5)', drawBorder: false }, border: { display: false } }
     }
   };
+}
+
+function resetChartZoom(canvasId) {
+  const map = {
+    chartHistory: charts.history,
+    chartCompare: charts.compare,
+    chartReloc: charts.reloc
+  };
+  const ch = map[canvasId] || charts[canvasId];
+  if (ch && typeof ch.resetZoom === 'function') ch.resetZoom();
+}
+
+function chartZoomHintHtml() {
+  return '<span class="chart-zoom-hint">Pinch ou scroll = zoom · Shift+arrastar = pan</span>';
 }
 
 function setChartAria(canvasId, label) {

@@ -112,7 +112,7 @@ function renderCompare() {
         type: 'line',
         data: { labels: years, datasets },
         options: {
-          ...chartOpts(true),
+          ...chartOpts(true, true, 'x'),
           interaction: { intersect: false, mode: 'index' },
           scales: {
             x: { ticks: { color: '#8a8a8a', maxTicksLimit: 18 }, grid: { color: 'rgba(46,46,46,0.4)' } },

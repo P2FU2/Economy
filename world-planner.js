@@ -140,6 +140,55 @@ function deleteTask(id) {
   Planner.persist();
 }
 
+function exportPlannerPdf() {
+  if (!window.jspdf?.jsPDF) {
+    alert('Biblioteca PDF não carregada. Recarregue a página.');
+    return;
+  }
+  const { jsPDF } = window.jspdf;
+  const s = Planner.get();
+  const c = getCountry(s.target);
+  const done = s.tasks.filter(t => t.done).length;
+  const total = s.tasks.length;
+  const pct = total ? Math.round((done / total) * 100) : 0;
+  const doc = new jsPDF({ unit: 'mm', format: 'a4' });
+  const margin = 18;
+  let y = margin;
+  const line = (text, size, bold) => {
+    doc.setFontSize(size || 10);
+    doc.setFont('helvetica', bold ? 'bold' : 'normal');
+    const lines = doc.splitTextToSize(String(text || ''), 174);
+    lines.forEach(l => {
+      if (y > 275) { doc.addPage(); y = margin; }
+      doc.text(l, margin, y);
+      y += size > 12 ? 7 : 5;
+    });
+  };
+  line('WORLDPANEL — Planejamento de Transicao', 16, true);
+  y += 2;
+  line('Gerado em ' + new Date().toLocaleString('pt-BR'), 9, false);
+  y += 4;
+  line('Destino: ' + (c ? c.name : s.target), 11, true);
+  line('Orcamento reserva: ' + (s.budget || '—'), 10, false);
+  line('Data meta: ' + (s.deadline || '—'), 10, false);
+  line('Progresso: ' + pct + '% (' + done + '/' + total + ' tarefas)', 10, false);
+  y += 4;
+  line('TAREFAS POR FASE', 11, true);
+  Object.entries(PHASES).forEach(([key, ph]) => {
+    const list = s.tasks.filter(t => (t.phase || 'notes') === key);
+    if (!list.length) return;
+    line(ph.label, 10, true);
+    list.forEach(t => line((t.done ? '[x] ' : '[ ] ') + t.text, 9, false));
+    y += 2;
+  });
+  y += 2;
+  line('ANOTACOES', 11, true);
+  line(s.notes || '(vazio)', 9, false);
+  y += 4;
+  line('— WorldPanel · economy painel global', 8, false);
+  doc.save('planejamento_' + new Date().toISOString().slice(0, 10) + '.pdf');
+}
+
 function exportPlanner() {
   const s = Planner.get();
   const c = getCountry(s.target);

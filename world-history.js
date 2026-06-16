@@ -314,9 +314,9 @@ function renderHistoryChart(code, indIds, mode) {
         }]
       },
       options: {
-        ...chartOpts(false),
+        ...chartOpts(false, true, 'xy'),
         plugins: {
-          ...chartOpts(false).plugins,
+          ...chartOpts(false, true, 'xy').plugins,
           tooltip: {
             ...chartOpts(false).plugins.tooltip,
             callbacks: {
@@ -378,10 +378,10 @@ function renderHistoryChart(code, indIds, mode) {
     type: 'line',
     data: { labels: years, datasets },
     options: {
-      ...chartOpts(indIds.length > 1),
+      ...chartOpts(indIds.length > 1, true, 'x'),
       interaction: { intersect: false, mode: 'index' },
       plugins: {
-        ...chartOpts(indIds.length > 1).plugins,
+        ...chartOpts(indIds.length > 1, true, 'x').plugins,
         tooltip: {
           ...chartOpts(false).plugins.tooltip,
           callbacks: {

@@ -193,9 +193,9 @@ function switchTab(tabId, opts) {
     }
   }
   onTabActivate(tabId);
-  updateURLState();
-  closeMobileNav();
-  window.scrollTo({ top: 0, behavior: 'smooth' });
+  if (!opts.skipUrl) updateURLState();
+  if (!opts.skipTour) closeMobileNav();
+  if (!opts.skipScroll) window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 
 function updateURLState() {
@@ -407,6 +407,7 @@ function initUX() {
   const st = document.getElementById('statusText');
   if (st) st.setAttribute('aria-live', 'polite');
   if (typeof initUXExtended === 'function') initUXExtended();
+  if (typeof initTour === 'function') initTour();
 }
 
 function exportChartPng(canvasId, filename) {
